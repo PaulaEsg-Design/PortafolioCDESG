@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Portafolio · Cultura Digital II</title>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Rajdhani:wght@300;400;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --black: #080808;
+      --deep: #0e0e0e;
+      --red: #e50914;
+      --red-dim: #7a0008;
+      --red-glow: rgba(229, 9, 20, 0.35);
+      --white: #f0f0f0;
+      --grey: #2a2a2a;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background-color: #0a0a0a;
+      color: var(--white);
+      font-family: 'Rajdhani', sans-serif;
+      overflow-x: hidden;
+    }
+
+    /* Red ambient glow fixed to viewport */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 70% 60% at 50% 0%,
+          rgba(229,9,20,0.13) 0%,
+          transparent 70%),
+        radial-gradient(ellipse 50% 40% at 50% 100%,
+          rgba(229,9,20,0.10) 0%,
+          transparent 65%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    main, footer { position: relative; z-index: 1; }
+
+    /* Cuadrícula roja SOLO en la sección de tareas */
+    main {
+      background-image:
+        linear-gradient(rgba(229,9,20,0.10) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(229,9,20,0.10) 1px, transparent 1px);
+      background-size: 60px 60px;
+    }
+
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: var(--black); }
+    ::-webkit-scrollbar-thumb { background: var(--red); border-radius: 2px; }
+
+    /* ═══ HERO ═══ */
+    .hero {
+      position: relative;
+      height: 100vh;
+      min-height: 600px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      background: #080808;
+    }
+
+    /* Sin cuadrícula en el hero — solo fondo negro */
+    .hero::before { display: none; }
+
+    /* Difuminado rojo central — ambiente dramático */
+    .hero-glow {
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 65% 55% at 50% 50%,
+          rgba(229,9,20,0.30) 0%,
+          rgba(229,9,20,0.10) 50%,
+          transparent 75%);
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    /* Viñeta negra en los bordes — suaviza sin bloquear la cuadrícula */
+    .hero-vignette {
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse 100% 100% at 50% 50%,
+        transparent 35%,
+        rgba(8,8,8,0.85) 100%);
+      pointer-events: none;
+      z-index: 2;
+    }
+
+    .hero::after {
+      content: '';
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--red), transparent);
+    }
+
+    #starsCanvas {
+      position: absolute;
+      inset: 0;
+      width: 100%; height: 100%;
+      pointer-events: none;
+    }
+
+    .scanlines {
+      position: absolute;
+      inset: 0;
+      background: repeating-linear-gradient(
+        to bottom,
+        transparent 0px, transparent 3px,
+        rgba(0,0,0,0.08) 3px, rgba(0,0,0,0.08) 4px
+      );
+      pointer-events: none;
+      opacity: 0.4;
+    }
+
+    .hero-content {
+      position: relative;
+      z-index: 10;
+      text-align: center;
+      padding: 0 24px;
+    }
+
+    .corner { z-index: 10; }
+
+    .hero-eyebrow {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.72rem;
+      letter-spacing: 0.35em;
+      color: var(--red);
+      text-transform: uppercase;
+      margin-bottom: 24px;
+      opacity: 0;
+      animation: fadeUp 0.8s 0.2s ease forwards;
+    }
+
+    .hero-title {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: clamp(3.5rem, 10vw, 8rem);
+      line-height: 0.92;
+      letter-spacing: 0.04em;
+      color: var(--white);
+      text-shadow: 0 0 60px rgba(229,9,20,0.4), 0 0 120px rgba(229,9,20,0.15);
+      opacity: 0;
+      animation: fadeUp 0.9s 0.4s ease forwards;
+    }
+
+    .hero-title span { display: block; color: var(--red); }
+
+    .hero-subtitle {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.8rem;
+      letter-spacing: 0.2em;
+      color: rgba(240,240,240,0.45);
+      margin-top: 20px;
+      opacity: 0;
+      animation: fadeUp 0.9s 0.65s ease forwards;
+    }
+
+    .hero-line {
+      width: 60px; height: 2px;
+      background: var(--red);
+      margin: 28px auto;
+      opacity: 0;
+      animation: scaleIn 0.6s 0.85s ease forwards;
+      box-shadow: 0 0 12px var(--red);
+    }
+
+    .hero-scroll {
+      position: absolute;
+      bottom: 36px; left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.62rem;
+      letter-spacing: 0.25em;
+      color: rgba(240,240,240,0.3);
+      text-transform: uppercase;
+      animation: pulse 2s infinite;
+    }
+
+    .hero-scroll::after {
+      content: '';
+      width: 1px; height: 40px;
+      background: linear-gradient(to bottom, var(--red), transparent);
+    }
+
+    .corner {
+      position: absolute;
+      width: 40px; height: 40px;
+      opacity: 0.5;
+    }
+    .corner-tl { top: 24px; left: 24px; border-top: 1px solid var(--red); border-left: 1px solid var(--red); }
+    .corner-tr { top: 24px; right: 24px; border-top: 1px solid var(--red); border-right: 1px solid var(--red); }
+    .corner-bl { bottom: 24px; left: 24px; border-bottom: 1px solid var(--red); border-left: 1px solid var(--red); }
+    .corner-br { bottom: 24px; right: 24px; border-bottom: 1px solid var(--red); border-right: 1px solid var(--red); }
+
+    /* ═══ SECTION ═══ */
+    .section {
+      padding: 100px 24px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .section-header {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      margin-bottom: 20px;
+    }
+
+    .section-label {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.7rem;
+      letter-spacing: 0.3em;
+      color: var(--red);
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    .section-line {
+      flex: 1; height: 1px;
+      background: linear-gradient(to right, var(--red-dim), transparent);
+    }
+
+    .section-title {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: clamp(2rem, 5vw, 3.2rem);
+      letter-spacing: 0.06em;
+      color: var(--white);
+      margin-bottom: 56px;
+    }
+
+    /* ═══ CARDS ═══ */
+    .cards-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 28px;
+    }
+
+    .card {
+      position: relative;
+      background: #080808;
+      border: 1px solid var(--grey);
+      overflow: hidden;
+      opacity: 0;
+      transform: translateY(30px);
+      transition:
+        opacity 0.55s ease,
+        transform 0.55s ease,
+        border-color 0.35s ease,
+        box-shadow 0.35s ease;
+    }
+
+    /* Red radial glow overlay inside card */
+    .card::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse 80% 70% at 50% 110%, rgba(229,9,20,0.18) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .card-number,
+    .card-img-ph,
+    .card-image,
+    .card-body { position: relative; z-index: 1; }
+
+    .card.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .card:hover {
+      transform: translateY(-6px) !important;
+      border-color: var(--red);
+      box-shadow: 0 0 30px rgba(229,9,20,0.18), 0 20px 40px rgba(0,0,0,0.5);
+    }
+
+    .card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+      background: var(--red);
+      transform: scaleX(0);
+      transform-origin: left;
+      transition: transform 0.4s ease;
+    }
+    .card:hover::before { transform: scaleX(1); }
+
+    .card-number {
+      position: absolute;
+      top: 14px; right: 16px;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.65rem;
+      color: var(--red);
+      letter-spacing: 0.1em;
+      z-index: 5;
+    }
+
+    /* Image slot — replace src with your own image */
+    .card-image {
+      width: 100%;
+      height: 190px;
+      object-fit: cover;
+      display: block;
+      filter: grayscale(30%) brightness(0.85);
+      transition: filter 0.4s ease;
+    }
+    .card:hover .card-image { filter: grayscale(0%) brightness(1); }
+
+    /* Placeholder when no real image */
+    .card-img-ph {
+      width: 100%;
+      height: 190px;
+      background: #161616;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2.8rem;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .card-img-ph::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background:
+        linear-gradient(135deg, #0e0e0e 25%, transparent 25%) -10px 0,
+        linear-gradient(225deg, #0e0e0e 25%, transparent 25%) -10px 0,
+        linear-gradient(315deg, #0e0e0e 25%, transparent 25%),
+        linear-gradient(45deg,  #0e0e0e 25%, transparent 25%);
+      background-size: 20px 20px;
+      background-color: #1a1a1a;
+    }
+
+    .card-img-ph span { position: relative; z-index: 1; opacity: 0.3; }
+
+    .card-body { padding: 24px 22px 28px; }
+
+    .card-tag {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.62rem;
+      letter-spacing: 0.2em;
+      color: var(--red);
+      text-transform: uppercase;
+      margin-bottom: 10px;
+    }
+
+    .card-title {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 1.45rem;
+      letter-spacing: 0.06em;
+      color: var(--white);
+      margin-bottom: 12px;
+      line-height: 1.1;
+    }
+
+    .card-desc {
+      font-size: 0.88rem;
+      font-weight: 300;
+      line-height: 1.65;
+      color: rgba(240,240,240,0.5);
+      margin-bottom: 24px;
+      min-height: 56px;
+    }
+
+    .card-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 22px;
+      background: transparent;
+      border: 1px solid var(--red);
+      color: var(--red);
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.72rem;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      text-decoration: none;
+      cursor: pointer;
+      position: relative;
+      overflow: hidden;
+      transition: color 0.25s ease, box-shadow 0.25s ease;
+    }
+
+    .card-btn::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: var(--red);
+      transform: translateX(-101%);
+      transition: transform 0.28s ease;
+    }
+
+    .card-btn:hover::before { transform: translateX(0); }
+    .card-btn:hover { color: var(--white); box-shadow: 0 0 16px var(--red-glow); }
+
+    .card-btn span, .card-btn-arrow { position: relative; z-index: 1; }
+    .card-btn-arrow { transition: transform 0.25s ease; }
+    .card-btn:hover .card-btn-arrow { transform: translateX(4px); }
+
+    /* ═══ FOOTER ═══ */
+    footer {
+      border-top: 1px solid var(--grey);
+      padding: 36px 24px;
+      text-align: center;
+    }
+
+    .footer-text {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.65rem;
+      letter-spacing: 0.25em;
+      color: rgba(240,240,240,0.2);
+      text-transform: uppercase;
+    }
+    .footer-text span { color: var(--red); }
+
+    /* ═══ KEYFRAMES ═══ */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(28px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes scaleIn {
+      from { opacity: 0; transform: scaleX(0); }
+      to   { opacity: 1; transform: scaleX(1); }
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 0.3; }
+      50%       { opacity: 0.7; }
+    }
+
+    @media (max-width: 600px) {
+      .cards-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ═══ HERO ═══ -->
+  <section class="hero">
+    <canvas id="starsCanvas"></canvas>
+    <div class="hero-glow"></div>
+    <div class="hero-vignette"></div>
+    <div class="scanlines"></div>
+    <div class="corner corner-tl"></div>
+    <div class="corner corner-tr"></div>
+    <div class="corner corner-bl"></div>
+    <div class="corner corner-br"></div>
+
+    <div class="hero-content">
+      <p class="hero-eyebrow">✦ Inteligencia Artificial · 2026 ✦</p>
+      <h1 class="hero-title">
+        Portafolio<br>
+        <span>Cultura Digital II</span>
+      </h1>
+      <div class="hero-line"></div>
+      <p class="hero-subtitle">Segundo Semestre &nbsp;· BY: Paula Estrada</p>
+    </div>
+
+    <div class="hero-scroll">INICIAR</div>
+
+             <a target="_blank" href="https://www.instagram.com/aprx_esg/" class="hero-subtitle">INSTAGRAM</a>
+
+  </section>
+
+  <!-- ═══ TAREAS ═══ -->
+
+  <main>
+    <div class="section">
+      <div class="section-header">
+        <span class="section-label"> ✦ Tareas </span>
+        <div class="section-line"></div>
+      </div>
+      <h2 class="section-title"> Actividades del Semestre </h2>
+
+      <div class="cards-grid">
+
+        <!-- ── Card 1 ── -->
+        <article class="card">
+          <span class="card-number">01</span>
+
+         <img src="Tim Berners-Lee.jpg" width="365px" height="215">
+          <div class="card-body">
+            <p class="card-tag">TAREA 1</p>
+            <h3 class="card-title">PADRE DEL INTERNET</h3>
+            <p class="card-desc">Tim Berners-Lee es un científico e ingeniero británico nacido en 1955, ampliamente reconocido como el inventor de la World Wide Web (WWW).</p>
+            <a href="Tarea1.html" class="card-btn">
+              <span>Ver Tarea</span>
+              <span class="card-btn-arrow">→</span>
+            </a>
+          </div>
+        </article>
+
+        <!-- ── Card 2 ── -->
+        <article class="card">
+          <span class="card-number">02</span>
+         <img src="Imagen2.jpg" width="365px" height="215">
+          <div class="card-body">
+            <p class="card-tag">TAREA 2</p>
+            <h3 class="card-title">LENGUAJE DE DISEÑO Y PROGRAMACION</h3>
+            <p class="card-desc">Los lenguajes de código y diseño son herramientas esenciales para crear, estructurar y dar estilo a aplicaciones y sitios web. Existen diferentes tipos de lenguajes, cada uno con un enfoque especifico.</p>
+            <a href="Tarea2.html" class="card-btn">
+              <span>Ver Tarea</span>
+              <span class="card-btn-arrow">→</span>
+            </a>
+          </div>
+        </article>
+
+        <!-- ── Card 3 ── -->
+        <article class="card">
+          <span class="card-number">03</span>
+         <img src="Imagen3.jpg" width="365px" height="215">
+          <div class="card-body">
+            <p class="card-tag">TAREA 3</p>
+            <h3 class="card-title">PROGRAMACION CON IA</h3>
+            <p class="card-desc">HTML5 es la quinta y última versión del estándar de marcado para estructurar páginas web, diseñada para la web moderna. Permite crear sitios compatibles con móviles, integra multimedia nativa (video/audio) sin plugins, usa etiquetas semánticas para SEO mejorado y proporciona APIs potentes para aplicaciones web, reemplazando tecnologías obsoletas.</p>
+            <a href="Tarea3.html" class="card-btn">
+              <span>Ver Tarea</span>
+              <span class="card-btn-arrow">→</span>
+            </a>
+          </div>
+        </article>
+
+        <!-- ── Card 4 ── -->
+        <article class="card">
+          <span class="card-number">04</span>
+         <img src="Imagen4.jpg" width="365px" height="215">
+          <div class="card-body">
+            <p class="card-tag">TAREA 4</p>
+            <h3 class="card-title">CREACION DE CONTENIDO</h3>
+            <p class="card-desc">El lenguaje de CSS3 es utilizado para diseñar la interfaz y presentación de sitios web, estandarizado por la W3C. Introduce módulos avanzados como flexbox, grid, animaciones, sombras y esquinas redondeadas, permitiendo diseños responsivos sin depender de imágenes, evolucionando de forma modular en lugar de versión única.</p>
+            <a href="Tarea4.html" class="card-btn">
+              <span>Ver Tarea</span>
+              <span class="card-btn-arrow">→</span>
+            </a>
+          </div>
+        </article>
+
+        <!-- ── Card 5 ── -->
+        <article class="card">
+          <span class="card-number">05</span>
+          <div class="card-img-ph"><span>🔮</span></div>
+          <div class="card-body">
+            <p class="card-tag">Unidad 3</p>
+            <h3 class="card-title">Nombre de la Tarea</h3>
+            <p class="card-desc">Breve descripción de la actividad. Explica el tema, el objetivo y lo que aprendiste en esta tarea.</p>
+            <a href="#" class="card-btn">
+              <span>Ver Tarea</span>
+              <span class="card-btn-arrow">→</span>
+            </a>
+          </div>
+        </article>
+
+        <!-- ── Card 6 ── -->
+        <article class="card">
+          <span class="card-number">06</span>
+          <div class="card-img-ph"><span>⚡</span></div>
+          <div class="card-body">
+            <p class="card-tag">Unidad 3</p>
+            <h3 class="card-title">Nombre de la Tarea</h3>
+            <p class="card-desc">Breve descripción de la actividad. Explica el tema, el objetivo y lo que aprendiste en esta tarea.</p>
+            <a href="#" class="card-btn">
+              <span>Ver Tarea</span>
+              <span class="card-btn-arrow">→</span>
+            </a>
+          </div>
+        </article>
+
+      </div>
+    </div>
+  </main>
+
+  <!-- ═══ FOOTER ═══ -->
+  <footer>
+    <p class="footer-text"> <span>✦ CENTRO DE BARCHILLERATO TECNOLOGICO INDUSTRIAL Y DE SERVICIOS NUMERO 144 ✦</span> </p>
+  <p class="footer-text"> &nbsp;Segundo Semestre de IA</span> &nbsp;·&nbsp; Paula Estrada Alegria</p>
+  </footer>
+
+  <script>
+    /* ─── STARS ─── */
+    (function () {
+      const canvas = document.getElementById('starsCanvas');
+      const ctx = canvas.getContext('2d');
+      const hero = canvas.parentElement;
+      const COUNT = 90;
+      let stars = [];
+
+      function resize() {
+        canvas.width  = hero.offsetWidth;
+        canvas.height = hero.offsetHeight;
+      }
+
+      function makeStar(randomY) {
+        return {
+          x: Math.random() * canvas.width,
+          y: randomY ? Math.random() * canvas.height : canvas.height + Math.random() * 40,
+          size: Math.random() * 1.6 + 0.3,
+          speed: Math.random() * 0.6 + 0.25,
+          opacity: Math.random() * 0.6 + 0.4,
+          phase: Math.random() * Math.PI * 2
+        };
+      }
+
+      function init() {
+        stars = Array.from({ length: COUNT }, () => makeStar(true));
+      }
+
+      function loop() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        stars.forEach(s => {
+          s.y     -= s.speed;
+          s.phase += 0.03;
+
+          const prog = 1 - s.y / canvas.height;
+          const fade = prog > 0.6 ? s.opacity * (1 - (prog - 0.6) / 0.4) : s.opacity;
+          const alpha = Math.max(0, fade * (0.85 + 0.15 * Math.sin(s.phase)));
+
+          ctx.save();
+          ctx.globalAlpha = alpha;
+          ctx.fillStyle = '#ffffff';
+          ctx.beginPath();
+          ctx.arc(s.x, s.y, s.size, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+
+          if (s.y < -10 || alpha <= 0) Object.assign(s, makeStar(false));
+        });
+        requestAnimationFrame(loop);
+      }
+
+      resize();
+      init();
+      loop();
+      window.addEventListener('resize', () => { resize(); init(); });
+    })();
+
+    /* ─── CARD REVEAL ─── */
+    (function () {
+      const cards = document.querySelectorAll('.card');
+      const io = new IntersectionObserver(entries => {
+        entries.forEach((e, i) => {
+          if (e.isIntersecting) {
+            setTimeout(() => e.target.classList.add('visible'), i * 90);
+            io.unobserve(e.target);
+          }
+        });
+      }, { threshold: 0.12 });
+      cards.forEach(c => io.observe(c));
+    })();
+  </script>
+
+</body>
+</html>

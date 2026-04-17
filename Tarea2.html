@@ -1,0 +1,2120 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Lenguajes de Diseño y Programación — Cultura Digital 2</title>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Rajdhani:wght@300;400;600;700&family=JetBrains+Mono:wght@300;400;500;700&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --black:    #060608;
+      --deep:     #0b0b0e;
+      --panel:    #0f0f12;
+      --red:      #e50914;
+      --red-dim:  rgba(229,9,20,0.18);
+      --red-glow: rgba(229,9,20,0.35);
+      --white:    #e8e8e8;
+      --grey:     #1e1e22;
+      --grey-lt:  #333338;
+      --comment:  #4a4a55;
+      --green:    #3ddc84;  /* syntax highlight accent */
+      --blue:     #79c0ff;  /* syntax highlight accent */
+      --yellow:   #e3b341;  /* syntax highlight accent */
+      --mono: 'JetBrains Mono', monospace;
+      --display: 'Bebas Neue', sans-serif;
+      --body: 'Rajdhani', sans-serif;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--black);
+      color: var(--white);
+      font-family: var(--body);
+      overflow-x: hidden;
+    }
+
+    ::-webkit-scrollbar { width: 3px; }
+    ::-webkit-scrollbar-track { background: var(--black); }
+    ::-webkit-scrollbar-thumb { background: var(--red); }
+
+    /* ══════════════════════════
+       HERO — HUD SCI-FI
+    ══════════════════════════ */
+    .hero {
+      position: relative;
+      height: 100vh;
+      min-height: 640px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      background: #060608;
+    }
+
+    /* Canvas principal HUD */
+    #hudCanvas {
+      position: absolute;
+      inset: 0; width: 100%; height: 100%;
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    /* Grid de fondo tenue */
+    .hero-grid {
+      position: absolute; inset: 0;
+      background-image:
+        linear-gradient(rgba(229,9,20,0.055) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(229,9,20,0.055) 1px, transparent 1px);
+      background-size: 52px 52px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* Oscuridad central para contraste del título — sin glow de fondo */
+    .hero-center-mask {
+      position: absolute; inset: 0;
+      background: radial-gradient(ellipse 50% 46% at 50% 50%,
+        rgba(6,6,8,0.96) 0%,
+        rgba(6,6,8,0.80) 42%,
+        transparent 72%);
+      pointer-events: none;
+      z-index: 2;
+    }
+
+    /* Scanlines */
+    .scanlines {
+      position: absolute; inset: 0;
+      background: repeating-linear-gradient(
+        to bottom,
+        transparent 0, transparent 3px,
+        rgba(0,0,0,0.05) 3px, rgba(0,0,0,0.05) 4px
+      );
+      pointer-events: none;
+      z-index: 3; opacity: 0.45;
+    }
+
+    /* ── PANEL DATOS IZQUIERDO ── */
+    .hud-panel {
+      position: absolute;
+      z-index: 5;
+      font-family: var(--mono);
+      font-size: 0.52rem;
+      letter-spacing: 0.12em;
+      color: rgba(229,9,20,0.65);
+      text-transform: uppercase;
+      line-height: 1.9;
+      opacity: 0;
+      animation: fadeIn 0.5s 1.8s ease forwards;
+    }
+
+    .hud-panel-l {
+      top: 50%;
+      left: 28px;
+      transform: translateY(-50%);
+      border-left: 1px solid rgba(229,9,20,0.3);
+      padding-left: 10px;
+    }
+
+    .hud-panel-r {
+      top: 50%;
+      right: 28px;
+      transform: translateY(-50%);
+      border-right: 1px solid rgba(229,9,20,0.3);
+      padding-right: 10px;
+      text-align: right;
+    }
+
+    .hud-panel span { display: block; }
+    .hud-panel .dim { color: rgba(229,9,20,0.28); }
+    .hud-panel .bright { color: rgba(229,9,20,0.9); }
+    .hud-panel .sep {
+      border-top: 1px solid rgba(229,9,20,0.2);
+      margin: 6px 0;
+    }
+
+    /* ── BARRA SUPERIOR e INFERIOR ── */
+    .hud-bar {
+      position: absolute;
+      left: 0; right: 0;
+      z-index: 5;
+      display: flex;
+      align-items: center;
+      padding: 0 28px;
+      font-family: var(--mono);
+      font-size: 0.5rem;
+      letter-spacing: 0.14em;
+      color: rgba(229,9,20,0.5);
+      text-transform: uppercase;
+      opacity: 0;
+      animation: fadeIn 0.5s 1.6s ease forwards;
+    }
+
+    .hud-bar-top { top: 0; border-bottom: 1px solid rgba(229,9,20,0.25); height: 32px; }
+    .hud-bar-bot { bottom: 0; border-top: 1px solid rgba(229,9,20,0.25); height: 32px; }
+
+    .hud-bar-fill { flex:1; }
+
+    .hud-bar-ticks {
+      display: flex;
+      gap: 4px;
+      align-items: flex-end;
+      height: 14px;
+    }
+
+    .hud-tick {
+      width: 2px;
+      background: rgba(229,9,20,0.35);
+      animation: tickPulse 2s ease-in-out infinite;
+    }
+
+    .hud-tick:nth-child(odd)  { height: 6px; animation-delay: 0.1s; }
+    .hud-tick:nth-child(even) { height: 10px; animation-delay: 0.3s; }
+    .hud-tick:nth-child(3n)   { height: 14px; animation-delay: 0.5s; }
+
+    @keyframes tickPulse {
+      0%,100% { opacity: 0.35; }
+      50%      { opacity: 0.9; }
+    }
+
+    /* ── ANILLO CENTRAL GIRATORIO ── */
+    .ring-wrap {
+      position: absolute;
+      z-index: 2;
+      pointer-events: none;
+      /* centrado */
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+    }
+
+    .ring {
+      position: absolute;
+      border-radius: 50%;
+      border-style: solid;
+      border-color: transparent;
+      top: 50%; left: 50%;
+    }
+
+    /* Anillo 1 — grande, gira lento */
+    .ring-1 {
+      width: 420px; height: 420px;
+      margin: -210px 0 0 -210px;
+      border-width: 1px;
+      border-top-color: rgba(229,9,20,0.55);
+      border-right-color: rgba(229,9,20,0.22);
+      animation: spin 14s linear infinite;
+    }
+
+    /* Arco decorativo en ring-1 */
+    .ring-1::before {
+      content:'';
+      position: absolute;
+      top: 12px; left: 12px; right: 12px; bottom: 12px;
+      border-radius: 50%;
+      border: 1px dashed rgba(229,9,20,0.12);
+    }
+
+    .ring-1::after {
+      content:'';
+      position: absolute;
+      width: 8px; height: 8px;
+      background: var(--red);
+      border-radius: 50%;
+      box-shadow: 0 0 10px var(--red), 0 0 20px rgba(229,9,20,0.5);
+      top: -4px; left: 50%; margin-left: -4px;
+    }
+
+    /* Anillo 2 — mediano, gira al revés */
+    .ring-2 {
+      width: 300px; height: 300px;
+      margin: -150px 0 0 -150px;
+      border-width: 1px;
+      border-bottom-color: rgba(229,9,20,0.6);
+      border-left-color: rgba(229,9,20,0.2);
+      animation: spinR 9s linear infinite;
+    }
+
+    .ring-2::after {
+      content:'';
+      position: absolute;
+      width: 6px; height: 6px;
+      background: rgba(229,9,20,0.9);
+      border-radius: 50%;
+      box-shadow: 0 0 8px rgba(229,9,20,0.8);
+      bottom: -3px; left: 50%; margin-left: -3px;
+    }
+
+    /* Anillo 3 — pequeño, guion */
+    .ring-3 {
+      width: 200px; height: 200px;
+      margin: -100px 0 0 -100px;
+      border-width: 1px;
+      border-top-color: rgba(229,9,20,0.4);
+      border-bottom-color: rgba(229,9,20,0.15);
+      animation: spin 6s linear infinite;
+    }
+
+    /* Anillo 4 — muy pequeño, core */
+    .ring-4 {
+      width: 100px; height: 100px;
+      margin: -50px 0 0 -50px;
+      border-width: 1px;
+      border-right-color: rgba(229,9,20,0.5);
+      border-left-color: rgba(229,9,20,0.2);
+      animation: spinR 4s linear infinite;
+    }
+
+    /* Cruz central */
+    .ring-cross {
+      position: absolute;
+      top: 50%; left: 50%;
+      width: 24px; height: 24px;
+      margin: -12px 0 0 -12px;
+    }
+
+    .ring-cross::before {
+      content:'';
+      position: absolute;
+      left: 50%; top: 0; bottom: 0;
+      width: 1px; background: rgba(229,9,20,0.5);
+      transform: translateX(-50%);
+    }
+
+    .ring-cross::after {
+      content:'';
+      position: absolute;
+      top: 50%; left: 0; right: 0;
+      height: 1px; background: rgba(229,9,20,0.5);
+      transform: translateY(-50%);
+    }
+
+    .ring-dot {
+      position: absolute;
+      top: 50%; left: 50%;
+      width: 10px; height: 10px;
+      margin: -5px 0 0 -5px;
+      border-radius: 50%;
+      background: rgba(229,9,20,0.2);
+      border: 1px solid rgba(229,9,20,0.9);
+      box-shadow: 0 0 14px rgba(229,9,20,0.7);
+      animation: corePulse 2.5s ease-in-out infinite;
+    }
+
+    @keyframes corePulse {
+      0%,100% { box-shadow: 0 0 10px rgba(229,9,20,0.6); }
+      50%      { box-shadow: 0 0 22px rgba(229,9,20,1); }
+    }
+
+    @keyframes spin  { from { transform: translate(-50%,-50%) rotate(0deg); }   to { transform: translate(-50%,-50%) rotate(360deg); } }
+    @keyframes spinR { from { transform: translate(-50%,-50%) rotate(0deg); }   to { transform: translate(-50%,-50%) rotate(-360deg); } }
+
+    /* ── CONTENIDO CENTRAL ── */
+    .hero-content {
+      position: relative;
+      z-index: 6;
+      text-align: center;
+      padding: 0 40px;
+      max-width: 700px;
+    }
+
+    .hero-tarea-id {
+      font-family: var(--mono);
+      font-size: 0.58rem;
+      letter-spacing: 0.3em;
+      color: rgba(229,9,20,0.75);
+      text-transform: uppercase;
+      margin-bottom: 14px;
+      opacity: 0;
+      animation: fadeUp 0.6s 1.0s ease forwards;
+    }
+
+    .hero-title {
+      font-family: var(--display);
+      font-size: clamp(2.4rem, 8vw, 6.8rem);
+      line-height: 0.88;
+      letter-spacing: 0.03em;
+      color: var(--white);
+      text-shadow: 0 2px 0 rgba(0,0,0,0.9);
+      opacity: 0;
+      animation: fadeUp 0.9s 1.2s ease forwards;
+    }
+
+    .hero-title .accent {
+      color: var(--red);
+      display: block;
+    }
+
+    .hero-divider {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin: 16px auto;
+      width: fit-content;
+      opacity: 0;
+      animation: fadeUp 0.5s 1.5s ease forwards;
+    }
+
+    .hero-divider-line {
+      width: 48px; height: 1px;
+      background: linear-gradient(to right, transparent, rgba(229,9,20,0.6));
+    }
+    .hero-divider-line:last-child { transform: scaleX(-1); }
+
+    .hero-divider-diamond {
+      width: 5px; height: 5px;
+      background: var(--red);
+      transform: rotate(45deg);
+      box-shadow: 0 0 8px var(--red);
+    }
+
+    .hero-sub {
+      font-family: var(--mono);
+      font-size: 0.6rem;
+      letter-spacing: 0.18em;
+      color: rgba(232,232,232,0.45);
+      text-transform: uppercase;
+      margin-bottom: 20px;
+      opacity: 0;
+      animation: fadeUp 0.6s 1.6s ease forwards;
+    }
+
+    /* Categorías — fondo oscuro para distinguirse del HUD */
+    .hero-cats {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 8px;
+      opacity: 0;
+      animation: fadeUp 0.6s 1.8s ease forwards;
+    }
+
+    .hero-cat {
+      font-family: var(--mono);
+      font-size: 0.58rem;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      padding: 6px 16px;
+      border: 1px solid rgba(229,9,20,0.55);
+      color: rgba(232,232,232,0.85);
+      background: rgba(6,6,8,0.88);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero-cat::before {
+      content:'';
+      position: absolute;
+      left: 0; top: 0; bottom: 0;
+      width: 2px;
+      background: var(--red);
+    }
+
+    /* ── BOTÓN VOLVER ── */
+    .btn-back {
+      position: absolute;
+      top: 38px; left: 48px;
+      z-index: 10;
+      display: inline-flex;
+      align-items: center;
+      gap: 9px;
+      padding: 7px 16px 7px 12px;
+      border: 1px solid rgba(229,9,20,0.45);
+      color: rgba(229,9,20,0.8);
+      font-family: var(--mono);
+      font-size: 0.58rem;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      text-decoration: none;
+      overflow: hidden;
+      opacity: 0;
+      animation: fadeIn 0.5s 1.4s ease forwards;
+      transition: color .25s, border-color .25s, box-shadow .25s;
+      background: rgba(6,6,8,0.85);
+    }
+
+    .btn-back::before {
+      content:''; position:absolute; inset:0;
+      background: var(--red);
+      transform: translateX(-101%);
+      transition: transform 0.28s ease;
+    }
+
+    .btn-back:hover { color: var(--white); border-color: var(--red); box-shadow: 0 0 14px rgba(229,9,20,0.3); }
+    .btn-back:hover::before { transform: translateX(0); }
+    .btn-back-arrow, .btn-back-label { position:relative; z-index:1; }
+    .btn-back-arrow { transition: transform .25s; }
+    .btn-back:hover .btn-back-arrow { transform: translateX(-3px); }
+
+    /* ── HUD ESQUINAS ── */
+    .hud {
+      position: absolute;
+      z-index: 6;
+      font-family: var(--mono);
+      font-size: 0.5rem;
+      letter-spacing: 0.14em;
+      color: rgba(229,9,20,0.48);
+      text-transform: uppercase;
+      opacity: 0;
+      animation: fadeIn 0.5s 1.8s ease forwards;
+    }
+
+    .hud span { display:block; line-height:1.9; }
+    .hud-tl { top: 38px; left: 48px; }
+    .hud-tr { top: 38px; right: 48px; text-align:right; }
+    .hud-br { bottom: 38px; right: 48px; text-align:right; }
+
+    /* Scroll cue */
+    .scroll-cue {
+      position: absolute;
+      bottom: 40px; left: 50%;
+      transform: translateX(-50%);
+      z-index: 6;
+      display: flex; flex-direction: column;
+      align-items: center; gap: 6px;
+      opacity: 0;
+      animation: fadeIn 0.5s 2.4s ease forwards;
+    }
+
+    .scroll-cue span {
+      font-family: var(--mono);
+      font-size: 0.5rem;
+      letter-spacing: 0.26em;
+      color: rgba(232,232,232,0.18);
+      text-transform: uppercase;
+      background: rgba(6,6,8,0.7);
+      padding: 1px 6px;
+    }
+
+    .scroll-line {
+      width: 1px; height: 32px;
+      background: linear-gradient(to bottom, var(--red), transparent);
+      animation: scrollPulse 1.8s ease-in-out infinite;
+    }
+
+    @keyframes scrollPulse {
+      0%,100% { opacity:1; transform:scaleY(1); }
+      50%      { opacity:0.3; transform:scaleY(0.5); }
+    }
+
+    /* ══════════════════════════
+       NAVEGACIÓN DE LENGUAJES
+    ══════════════════════════ */
+    .lang-nav {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      background: rgba(6,6,8,0.92);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--grey);
+      padding: 0 5vw;
+      display: flex;
+      align-items: center;
+      gap: 0;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+
+    .lang-nav::-webkit-scrollbar { display:none; }
+
+    .lang-nav-item {
+      font-family: var(--mono);
+      font-size: 0.62rem;
+      letter-spacing: 0.1em;
+      color: var(--comment);
+      padding: 14px 18px;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      transition: color .25s, border-color .25s;
+      white-space: nowrap;
+      text-decoration: none;
+    }
+
+    .lang-nav-item:hover { color: var(--white); }
+    .lang-nav-item.active { color: var(--red); border-bottom-color: var(--red); }
+
+    /* ══════════════════════════
+       LAYOUT PRINCIPAL
+    ══════════════════════════ */
+    .page { padding: 0 5vw 120px; min-width: 0; }
+
+    @media (max-width: 860px) {
+      .layout { grid-template-columns: 1fr; }
+      .sidebar { display: none; }
+      .btn-top { bottom: 20px; right: 20px; }
+    }
+
+    /* ── SECTION HEADER ── */
+    .sec-header {
+      padding-top: 90px;
+      margin-bottom: 56px;
+    }
+
+    .sec-eyebrow {
+      font-family: var(--mono);
+      font-size: 0.6rem;
+      letter-spacing: 0.3em;
+      color: var(--red);
+      text-transform: uppercase;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 10px;
+    }
+
+    .sec-eyebrow::after {
+      content:''; flex:1; height:1px;
+      background: linear-gradient(to right, rgba(229,9,20,0.4), transparent);
+    }
+
+    .sec-title {
+      font-family: var(--display);
+      font-size: clamp(2.2rem, 6vw, 4rem);
+      letter-spacing: 0.05em;
+      line-height: 1;
+      color: var(--white);
+    }
+
+    /* ══════════════════════════
+       LENGUAJE CARD — LAYOUT IDE
+    ══════════════════════════ */
+    .lang-block {
+      margin-bottom: 80px;
+      border: 1px solid var(--grey);
+      overflow: hidden;
+      transition: border-color .35s;
+    }
+
+    .lang-block:hover { border-color: rgba(229,9,20,0.3); }
+
+    /* Barra tipo tab de editor */
+    .lang-tabbar {
+      background: var(--panel);
+      border-bottom: 1px solid var(--grey);
+      display: flex;
+      align-items: center;
+      gap: 0;
+      padding: 0 0 0 0;
+    }
+
+    .lang-tab {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 20px;
+      font-family: var(--mono);
+      font-size: 0.62rem;
+      letter-spacing: 0.06em;
+      color: var(--comment);
+      border-right: 1px solid var(--grey);
+      background: transparent;
+    }
+
+    .lang-tab.active {
+      background: var(--deep);
+      color: var(--white);
+      border-bottom: 1px solid var(--red);
+      margin-bottom: -1px;
+    }
+
+    .lang-tab-dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+    }
+
+    .tab-spacer { flex:1; }
+
+    .lang-badge {
+      font-family: var(--mono);
+      font-size: 0.52rem;
+      letter-spacing: 0.12em;
+      padding: 3px 10px;
+      border: 1px solid rgba(229,9,20,0.35);
+      color: rgba(229,9,20,0.7);
+      margin-right: 16px;
+      text-transform: uppercase;
+    }
+
+    /* Contenido del card IDE */
+    .lang-body {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      min-height: 320px;
+    }
+
+    /* Panel izquierdo — info */
+    .lang-info {
+      padding: 36px 36px 36px 32px;
+      border-right: 1px solid var(--grey);
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+    }
+
+    .lang-logo-row {
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      margin-bottom: 22px;
+    }
+
+    .lang-logo {
+      width: 56px; height: 56px;
+      object-fit: contain;
+      filter: grayscale(20%);
+      border-radius: 4px;
+    }
+
+    .lang-logo-placeholder {
+      width: 56px; height: 56px;
+      background: var(--grey);
+      border: 1px solid var(--grey-lt);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.6rem;
+      border-radius: 4px;
+      flex-shrink: 0;
+    }
+
+    .lang-name {
+      font-family: var(--display);
+      font-size: clamp(1.8rem, 4vw, 2.6rem);
+      letter-spacing: 0.05em;
+      color: var(--white);
+      line-height: 1;
+    }
+
+    .lang-type {
+      font-family: var(--mono);
+      font-size: 0.58rem;
+      letter-spacing: 0.15em;
+      color: var(--red);
+      text-transform: uppercase;
+      margin-top: 2px;
+    }
+
+    .lang-desc {
+      font-size: 0.9rem;
+      font-weight: 300;
+      color: rgba(232,232,232,0.5);
+      line-height: 1.75;
+      margin-bottom: 24px;
+      flex: 1;
+    }
+
+    .lang-desc strong { color: rgba(232,232,232,0.85); font-weight: 600; }
+    .lang-desc em { font-style:normal; color: var(--red); }
+
+    /* Tags */
+    .lang-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .lang-tag {
+      font-family: var(--mono);
+      font-size: 0.52rem;
+      letter-spacing: 0.1em;
+      padding: 3px 10px;
+      border: 1px solid var(--grey-lt);
+      color: var(--comment);
+      text-transform: uppercase;
+    }
+
+    /* Panel derecho — código */
+    .lang-code-panel {
+      background: #0a0a0d;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .code-topbar {
+      background: var(--panel);
+      padding: 8px 16px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      border-bottom: 1px solid var(--grey);
+    }
+
+    .dot-r { width:10px;height:10px;border-radius:50%;background:#e50914; }
+    .dot-y { width:10px;height:10px;border-radius:50%;background:#e3b341; }
+    .dot-g { width:10px;height:10px;border-radius:50%;background:#3ddc84; }
+
+    .code-fname {
+      font-family: var(--mono);
+      font-size: 0.58rem;
+      color: var(--comment);
+      margin-left: 8px;
+    }
+
+    .code-block {
+      padding: 24px 20px 24px 0;
+      overflow-x: auto;
+      flex: 1;
+      counter-reset: line;
+    }
+
+    .code-block pre {
+      font-family: var(--mono);
+      font-size: 0.75rem;
+      line-height: 1.8;
+      white-space: pre;
+      color: var(--white);
+    }
+
+    /* Números de línea */
+    .code-line {
+      display: flex;
+    }
+
+    .ln {
+      font-family: var(--mono);
+      font-size: 0.72rem;
+      line-height: 1.8;
+      color: #2e2e38;
+      min-width: 42px;
+      text-align: right;
+      padding-right: 18px;
+      user-select: none;
+      flex-shrink: 0;
+    }
+
+    .lc { flex: 1; }
+
+    /* Syntax colors */
+    .c-kw  { color: #c792ea; }   /* keyword */
+    .c-fn  { color: var(--blue); }
+    .c-str { color: var(--yellow); }
+    .c-num { color: #f78c6c; }
+    .c-cmt { color: #546e7a; font-style: italic; }
+    .c-tag { color: var(--red); }
+    .c-atr { color: var(--blue); }
+    .c-val { color: var(--yellow); }
+    .c-sel { color: var(--red); }
+    .c-prop{ color: var(--blue); }
+    .c-cls { color: var(--green); }
+    .c-op  { color: #89ddff; }
+    .c-var { color: var(--white); }
+    .c-pun { color: #89ddff; }
+
+    /* Responsive */
+    @media (max-width: 720px) {
+      .lang-body { grid-template-columns: 1fr; }
+      .lang-info { border-right: none; border-bottom: 1px solid var(--grey); }
+    }
+
+    /* ══════════════════════════
+       IMAGEN DE REFERENCIA
+    ══════════════════════════ */
+    .lang-img-row {
+      border-top: 1px solid var(--grey);
+      padding: 24px 32px;
+      background: var(--deep);
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+
+    .lang-ref-img {
+      width: 100%;
+      max-width: 320px;
+      height: 160px;
+      object-fit: cover;
+      border: 1px solid var(--grey-lt);
+      filter: grayscale(20%) brightness(0.85);
+      transition: filter .35s;
+    }
+
+    .lang-ref-img:hover { filter: grayscale(0%) brightness(1); }
+
+    .lang-img-caption {
+      flex: 1;
+    }
+
+    .img-cap-title {
+      font-family: var(--display);
+      font-size: 1.1rem;
+      letter-spacing: 0.06em;
+      color: var(--white);
+      margin-bottom: 8px;
+    }
+
+    .img-cap-text {
+      font-size: 0.82rem;
+      font-weight: 300;
+      color: rgba(232,232,232,0.42);
+      line-height: 1.65;
+    }
+
+    @media (max-width: 560px) {
+      .lang-img-row { flex-direction: column; }
+      .lang-ref-img { max-width: 100%; }
+      .hud-tl, .hud-tr, .hud-br { display: none; }
+    }
+
+    /* ══════════════════════════
+       CATEGORÍAS SEPARATOR
+    ══════════════════════════ */
+    .cat-separator {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      padding: 70px 0 0;
+      margin-bottom: 48px;
+    }
+
+    .cat-line {
+      flex:1; height:1px;
+      background: var(--grey);
+    }
+
+    .cat-label {
+      font-family: var(--mono);
+      font-size: 0.65rem;
+      letter-spacing: 0.3em;
+      color: var(--red);
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    /* ══════════════════════════
+       BARRA DE PROGRESO
+    ══════════════════════════ */
+    .reading-bar {
+      position: fixed;
+      top: 0; left: 0;
+      width: 0%;
+      height: 2px;
+      background: var(--red);
+      box-shadow: 0 0 8px var(--red);
+      z-index: 9999;
+      transition: width 0.08s linear;
+    }
+
+    /* ══════════════════════════
+       BOTÓN SCROLL TOP
+    ══════════════════════════ */
+    .btn-top {
+      position: fixed;
+      bottom: 36px; right: 36px;
+      z-index: 200;
+      width: 42px; height: 42px;
+      background: var(--black);
+      border: 1px solid rgba(229,9,20,0.5);
+      color: var(--red);
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
+      opacity: 0;
+      transform: translateY(16px);
+      transition: opacity .3s, transform .3s, background .25s, box-shadow .25s;
+      text-decoration: none;
+      pointer-events: none;
+      font-family: var(--mono);
+      font-size: 1rem;
+    }
+
+    .btn-top.show {
+      opacity: 1;
+      transform: translateY(0);
+      pointer-events: all;
+    }
+
+    .btn-top:hover {
+      background: var(--red);
+      color: var(--white);
+      box-shadow: 0 0 18px rgba(229,9,20,0.4);
+    }
+
+    /* ══════════════════════════
+       HERO NAV TAGS
+    ══════════════════════════ */
+    .hero-navtags {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 8px;
+      margin-top: 20px;
+      opacity: 0;
+      animation: fadeUp 0.7s 2.2s ease forwards;
+    }
+
+    .hero-navtag {
+      font-family: var(--mono);
+      font-size: 0.54rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      padding: 5px 14px;
+      border: 1px solid rgba(229,9,20,0.4);
+      color: rgba(232,232,232,0.7);
+      background: rgba(6,6,8,0.88);
+      text-decoration: none;
+      position: relative;
+      overflow: hidden;
+      transition: color .25s, border-color .25s, box-shadow .25s;
+    }
+
+    .hero-navtag::before {
+      content:''; position:absolute;
+      left:0; top:0; bottom:0;
+      width:2px; background:var(--red);
+    }
+
+    .hero-navtag:hover {
+      color: var(--white);
+      border-color: var(--red);
+      box-shadow: 0 0 10px rgba(229,9,20,0.18);
+    }
+
+    /* ══════════════════════════
+       LAYOUT CON SIDEBAR
+    ══════════════════════════ */
+    .layout {
+      display: grid;
+      grid-template-columns: 210px 1fr;
+      background: var(--black);
+    }
+
+    /* SIDEBAR */
+    .sidebar {
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow-y: auto;
+      background: var(--black);
+      border-right: 1px solid var(--grey);
+      padding: 28px 0;
+      scrollbar-width: none;
+    }
+
+    .sidebar::-webkit-scrollbar { display: none; }
+
+    .sidebar-header {
+      padding: 0 18px 18px;
+      border-bottom: 1px solid var(--grey);
+      margin-bottom: 10px;
+    }
+
+    .sidebar-tag {
+      font-family: var(--mono);
+      font-size: 0.48rem;
+      letter-spacing: 0.28em;
+      color: var(--red);
+      text-transform: uppercase;
+      margin-bottom: 6px;
+    }
+
+    .sidebar-name {
+      font-family: var(--display);
+      font-size: 0.95rem;
+      letter-spacing: 0.08em;
+      color: var(--white);
+      line-height: 1.25;
+    }
+
+    .nav-group { margin-bottom: 2px; }
+
+    .nav-group-label {
+      font-family: var(--mono);
+      font-size: 0.44rem;
+      letter-spacing: 0.28em;
+      color: rgba(229,9,20,0.36);
+      text-transform: uppercase;
+      padding: 9px 18px 3px;
+      display: block;
+    }
+
+    .nav-link {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      padding: 6px 18px;
+      font-family: var(--mono);
+      font-size: 0.56rem;
+      letter-spacing: 0.06em;
+      color: rgba(232,232,232,0.32);
+      text-decoration: none;
+      border-left: 2px solid transparent;
+      transition: color .2s, background .2s, padding-left .2s, border-color .2s;
+    }
+
+    .nav-link:hover, .nav-link.active {
+      color: var(--white);
+      background: rgba(229,9,20,0.06);
+      border-left-color: var(--red);
+      padding-left: 24px;
+    }
+
+    .nav-num {
+      font-size: 0.4rem;
+      color: rgba(229,9,20,0.36);
+      min-width: 14px;
+    }
+
+    /* ══════════════════════════
+       FOOTER
+    ══════════════════════════ */
+    .site-footer {
+      border-top: 1px solid var(--grey);
+      padding: 38px 5vw;
+      text-align: center;
+    }
+
+    .site-footer p {
+      font-family: var(--mono);
+      font-size: 0.58rem;
+      letter-spacing: 0.22em;
+      color: rgba(232,232,232,0.12);
+      text-transform: uppercase;
+    }
+
+    .site-footer span { color: var(--red); }
+
+    /* ══════════════════════════
+       SCROLL REVEAL
+    ══════════════════════════ */
+    .reveal {
+      opacity: 0;
+      transform: translateY(28px);
+      transition: opacity .6s ease, transform .6s ease;
+    }
+
+    .reveal.visible { opacity:1; transform:none; }
+
+    /* ══════════════════════════
+       KEYFRAMES
+    ══════════════════════════ */
+    @keyframes fadeUp {
+      from { opacity:0; transform:translateY(22px); }
+      to   { opacity:1; transform:translateY(0); }
+    }
+    @keyframes fadeIn {
+      from { opacity:0; }
+      to   { opacity:1; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ══ HERO ══ -->
+<header class="hero">
+  <div class="hero-grid"></div>
+  <canvas id="hudCanvas"></canvas>
+  <div class="hero-center-mask"></div>
+  <div class="scanlines"></div>
+
+  <!-- Anillos giratorios centrales -->
+  <div class="ring-wrap">
+    <div class="ring ring-1"></div>
+    <div class="ring ring-2"></div>
+    <div class="ring ring-3"></div>
+    <div class="ring ring-4"></div>
+    <div class="ring-cross"></div>
+    <div class="ring-dot"></div>
+  </div>
+
+  <!-- Barras superior e inferior -->
+  <div class="hud-bar hud-bar-top">
+    <span>SYS.CULTURA_DIGITAL_2 &nbsp;·&nbsp; TAREA.02 &nbsp;·&nbsp; LENGUAJES</span>
+    <span class="hud-bar-fill"></span>
+    <div class="hud-ticks-wrap" style="display:flex;gap:3px;align-items:flex-end;height:14px;">
+      <div class="hud-tick" style="width:2px;height:5px;background:rgba(229,9,20,0.4);"></div>
+      <div class="hud-tick" style="width:2px;height:9px;background:rgba(229,9,20,0.4);"></div>
+      <div class="hud-tick" style="width:2px;height:13px;background:rgba(229,9,20,0.7);"></div>
+      <div class="hud-tick" style="width:2px;height:7px;background:rgba(229,9,20,0.4);"></div>
+      <div class="hud-tick" style="width:2px;height:11px;background:rgba(229,9,20,0.5);"></div>
+      <div class="hud-tick" style="width:2px;height:5px;background:rgba(229,9,20,0.3);"></div>
+      <div class="hud-tick" style="width:2px;height:9px;background:rgba(229,9,20,0.4);"></div>
+    </div>
+    <span style="margin-left:12px;">2026.03.14</span>
+  </div>
+
+  <div class="hud-bar hud-bar-bot">
+    <span>HTML &nbsp;·&nbsp; CSS &nbsp;·&nbsp; JS &nbsp;·&nbsp; PYTHON &nbsp;·&nbsp; JAVA &nbsp;·&nbsp; C# &nbsp;·&nbsp; FIGMA &nbsp;·&nbsp; SASS</span>
+    <span class="hud-bar-fill"></span>
+    <span>2° SEM · IA</span>
+  </div>
+
+  <!-- Panel izquierdo datos -->
+  <div class="hud-panel hud-panel-l">
+    <span class="bright">ACTIVO</span>
+    <span class="dim">──────────</span>
+    <span>MODULO.02</span>
+    <span>WEB.DEV</span>
+    <span>DESKTOP</span>
+    <span>UI.DESIGN</span>
+    <div class="sep"></div>
+    <span class="dim">LENGUAJES</span>
+    <span>HTML5</span>
+    <span>CSS3</span>
+    <span>JAVASCRIPT</span>
+    <span>PYTHON</span>
+    <span>JAVA</span>
+    <span>C#</span>
+    <span>FIGMA</span>
+    <span>SASS</span>
+  </div>
+
+  <!-- Panel derecho datos -->
+  <div class="hud-panel hud-panel-r">
+    <span class="bright">CULTURA DIGITAL</span>
+    <span class="dim">──────────</span>
+    <span>SEGUNDO SEMESTRE</span>
+    <span>GRUPO A</span>
+    <div class="sep"></div>
+    <span class="dim">DATOS</span>
+    <span>PAULA</span>
+    <span>ESTRADA</span>
+    <span>ALEGRIA</span>
+    <div class="sep"></div>
+    <span class="dim">ESPECIALIDAD</span>
+    <span class="bright">INTELIGENCIA ARTIFICIAL</span>
+  </div>
+
+  <!-- Botón volver -->
+  <a href="index.html" class="btn-back">
+    <span class="btn-back-arrow">←</span>
+    <span class="btn-back-label">Volver al Portafolio</span>
+  </a>
+
+  <!-- HUD esquinas -->
+  <div class="hud hud-tl" style="top:44px;">
+    <span>// Cultura Digital II</span>
+    <span>Tarea 02 · 2026</span>
+  </div>
+  <div class="hud hud-tr">
+    <span>Lenguajes</span>
+    <span>Web · Desktop · UI</span>
+  </div>
+  <div class="hud hud-br">
+    <span>HTML · CSS · JS</span>
+    <span>Python · Figma · +</span>
+  </div>
+
+  <!-- Contenido central -->
+  <div class="hero-content">
+    <p class="hero-tarea-id">Tarea 02 &nbsp;·&nbsp; Cultura Digital II</p>
+
+    <h1 class="hero-title">
+      Lenguajes de<br>
+      <span class="accent">Diseño y Programación</span>
+    </h1>
+
+    <div class="hero-divider">
+      <div class="hero-divider-line"></div>
+      <div class="hero-divider-diamond"></div>
+      <div class="hero-divider-line"></div>
+    </div>
+
+    <p class="hero-sub">Lo necesario para diseñar y crear software</p>
+
+    <div class="hero-cats">
+      <span class="hero-cat">Desarrollo Web</span>
+      <span class="hero-cat">Escritorio</span>
+      <span class="hero-cat">Diseño &amp; Maquetación</span>
+    </div>
+
+    <!-- Navegación rápida a lenguajes -->
+    <div class="hero-navtags">
+      <a href="#web"        class="hero-navtag">HTML5</a>
+      <a href="#web"        class="hero-navtag">CSS3</a>
+      <a href="#web"        class="hero-navtag">JavaScript</a>
+      <a href="#web"        class="hero-navtag">Python</a>
+      <a href="#escritorio" class="hero-navtag">Java</a>
+      <a href="#escritorio" class="hero-navtag">C#</a>
+      <a href="#diseno"     class="hero-navtag">Figma</a>
+      <a href="#diseno"     class="hero-navtag">Sass / Tailwind</a>
+    </div>
+  </div>
+
+</header>
+
+<!-- ══ PROGRESS & TOP BTN ══ -->
+<div class="reading-bar" id="readingBar"></div>
+<a href="#" class="btn-top" id="btnTop" aria-label="Ir arriba">↑</a>
+
+<!-- ══ NAV STICKY ══ -->
+<nav class="lang-nav">
+  <a href="#web" class="lang-nav-item active">Web</a>
+  <a href="#escritorio" class="lang-nav-item">Escritorio</a>
+  <a href="#diseno" class="lang-nav-item">Diseño & UI</a>
+</nav>
+
+<div class="layout">
+
+  <!-- ── SIDEBAR ── -->
+  <nav class="sidebar">
+    <div class="sidebar-header">
+      <p class="sidebar-tag">// Tarea 02</p>
+      <p class="sidebar-name">Lenguajes<br>de Diseño</p>
+    </div>
+
+    <div class="nav-group">
+      <span class="nav-group-label">Desarrollo Web</span>
+      <a href="#html"       class="nav-link"><span class="nav-num">01</span> HTML5</a>
+      <a href="#css"        class="nav-link"><span class="nav-num">02</span> CSS3</a>
+      <a href="#javascript" class="nav-link"><span class="nav-num">03</span> JavaScript</a>
+      <a href="#python"     class="nav-link"><span class="nav-num">04</span> Python</a>
+    </div>
+
+    <div class="nav-group">
+      <span class="nav-group-label">Escritorio</span>
+      <a href="#java"       class="nav-link"><span class="nav-num">05</span> Java</a>
+      <a href="#csharp"     class="nav-link"><span class="nav-num">06</span> C#</a>
+    </div>
+
+    <div class="nav-group">
+      <span class="nav-group-label">Diseño & UI</span>
+      <a href="#figma"      class="nav-link"><span class="nav-num">07</span> Figma</a>
+      <a href="#sass"       class="nav-link"><span class="nav-num">08</span> Sass / Tailwind</a>
+    </div>
+  </nav>
+
+  <!-- ── CONTENIDO ── -->
+  <div class="page">
+
+  <!-- ════════════════════════════
+       SECCIÓN: DESARROLLO WEB
+  ════════════════════════════ -->
+  <div id="web" class="sec-header reveal">
+    <p class="sec-eyebrow">// 01 · Desarrollo Web</p>
+    <h2 class="sec-title">Lenguajes para la Web</h2>
+  </div>
+
+  <!-- ── HTML ── -->
+  <div class="lang-block reveal" id="html">
+    <div class="lang-tabbar">
+      <div class="lang-tab active">
+        <div class="lang-tab-dot" style="background:#e34c26;"></div>
+        index.html
+      </div>
+      <div class="lang-tab">
+        <div class="lang-tab-dot" style="background:#555;"></div>
+        README.md
+      </div>
+      <div class="tab-spacer"></div>
+      <span class="lang-badge">Lenguaje de marcado</span>
+    </div>
+
+    <div class="lang-body">
+      <div class="lang-info">
+        <div class="lang-logo-row">
+          <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/html5/html5-original.svg" alt="HTML5" class="lang-logo"/>
+          <div>
+            <p class="lang-name">HTML5</p>
+            <p class="lang-type">HyperText Markup Language</p>
+          </div>
+        </div>
+        <p class="lang-desc">
+          <strong>HTML (HyperText Markup Language)</strong> es el esqueleto de la web. Define la
+          <em>estructura y el significado semántico</em> de cada elemento en una página: títulos,
+          párrafos, imágenes, formularios, tablas y más. No es un lenguaje de programación —
+          es un lenguaje de marcado que los navegadores interpretan para renderizar contenido visible.
+          Creado por Tim Berners-Lee en 1991, hoy se encuentra en su versión <strong>HTML5</strong>,
+          que incorpora soporte nativo para audio, video, canvas 2D/3D y APIs de geolocalización,
+          almacenamiento local y notificaciones push.
+        </p>
+        <div class="lang-tags">
+          <span class="lang-tag">Marcado</span>
+          <span class="lang-tag">Semántica</span>
+          <span class="lang-tag">SEO</span>
+          <span class="lang-tag">Accesibilidad</span>
+          <span class="lang-tag">W3C</span>
+        </div>
+      </div>
+
+      <div class="lang-code-panel">
+        <div class="code-topbar">
+          <div class="dot-r"></div><div class="dot-y"></div><div class="dot-g"></div>
+          <span class="code-fname">index.html</span>
+        </div>
+        <div class="code-block">
+          <div class="code-line"><span class="ln">1</span><span class="lc"><span class="c-cmt">&lt;!-- Estructura básica HTML5 --&gt;</span></span></div>
+          <div class="code-line"><span class="ln">2</span><span class="lc"><span class="c-tag">&lt;!DOCTYPE</span> <span class="c-atr">html</span><span class="c-tag">&gt;</span></span></div>
+          <div class="code-line"><span class="ln">3</span><span class="lc"><span class="c-tag">&lt;html</span> <span class="c-atr">lang</span><span class="c-op">=</span><span class="c-val">"es"</span><span class="c-tag">&gt;</span></span></div>
+          <div class="code-line"><span class="ln">4</span><span class="lc"><span class="c-tag">&lt;head&gt;</span></span></div>
+          <div class="code-line"><span class="ln">5</span><span class="lc">  <span class="c-tag">&lt;meta</span> <span class="c-atr">charset</span><span class="c-op">=</span><span class="c-val">"UTF-8"</span><span class="c-tag">/&gt;</span></span></div>
+          <div class="code-line"><span class="ln">6</span><span class="lc">  <span class="c-tag">&lt;title&gt;</span>Mi Página<span class="c-tag">&lt;/title&gt;</span></span></div>
+          <div class="code-line"><span class="ln">7</span><span class="lc"><span class="c-tag">&lt;/head&gt;</span></span></div>
+          <div class="code-line"><span class="ln">8</span><span class="lc"><span class="c-tag">&lt;body&gt;</span></span></div>
+          <div class="code-line"><span class="ln">9</span><span class="lc">  <span class="c-tag">&lt;header&gt;</span></span></div>
+          <div class="code-line"><span class="ln">10</span><span class="lc">    <span class="c-tag">&lt;h1&gt;</span>Cultura Digital<span class="c-tag">&lt;/h1&gt;</span></span></div>
+          <div class="code-line"><span class="ln">11</span><span class="lc">    <span class="c-tag">&lt;nav&gt;</span></span></div>
+          <div class="code-line"><span class="ln">12</span><span class="lc">      <span class="c-tag">&lt;a</span> <span class="c-atr">href</span><span class="c-op">=</span><span class="c-val">"#inicio"</span><span class="c-tag">&gt;</span>Inicio<span class="c-tag">&lt;/a&gt;</span></span></div>
+          <div class="code-line"><span class="ln">13</span><span class="lc">    <span class="c-tag">&lt;/nav&gt;</span></span></div>
+          <div class="code-line"><span class="ln">14</span><span class="lc">  <span class="c-tag">&lt;/header&gt;</span></span></div>
+          <div class="code-line"><span class="ln">15</span><span class="lc">  <span class="c-tag">&lt;main&gt;</span></span></div>
+          <div class="code-line"><span class="ln">16</span><span class="lc">    <span class="c-tag">&lt;p&gt;</span>¡Hola, mundo digital!<span class="c-tag">&lt;/p&gt;</span></span></div>
+          <div class="code-line"><span class="ln">17</span><span class="lc">  <span class="c-tag">&lt;/main&gt;</span></span></div>
+          <div class="code-line"><span class="ln">18</span><span class="lc"><span class="c-tag">&lt;/body&gt;</span></span></div>
+          <div class="code-line"><span class="ln">19</span><span class="lc"><span class="c-tag">&lt;/html&gt;</span></span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="lang-img-row">
+      <img src="ImagenHtlm.jpg" height="130" width="200"/>
+      <div class="lang-img-caption">
+        <p class="img-cap-title">El Lenguaje Base de la Web</p>
+        <p class="img-cap-text">HTML estructura todo lo que ves en un navegador. Cada sitio web del mundo — desde Google hasta Wikipedia — está construido sobre etiquetas HTML. Es el primer lenguaje que todo desarrollador web aprende y el punto de partida de cualquier proyecto digital.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── CSS ── -->
+  <div class="lang-block reveal" id="css">
+    <div class="lang-tabbar">
+      <div class="lang-tab active">
+        <div class="lang-tab-dot" style="background:#264de4;"></div>
+        styles.css
+      </div>
+      <div class="tab-spacer"></div>
+      <span class="lang-badge">Lenguaje de estilos</span>
+    </div>
+
+    <div class="lang-body">
+      <div class="lang-info">
+        <div class="lang-logo-row">
+          <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/css3/css3-original.svg" alt="CSS3" class="lang-logo"/>
+          <div>
+            <p class="lang-name">CSS3</p>
+            <p class="lang-type">Cascading Style Sheets</p>
+          </div>
+        </div>
+        <p class="lang-desc">
+          <strong>CSS (Cascading Style Sheets)</strong> es el lenguaje de estilo visual de la web.
+          Controla <em>colores, tipografías, espaciado, animaciones y layout</em> de todos los elementos HTML.
+          El término "cascading" describe cómo los estilos se heredan y sobreescriben en orden de especificidad.
+          Con <strong>CSS3</strong>, la web ganó capacidades de animación, transformaciones 3D, variables nativas
+          (Custom Properties), Grid Layout y Flexbox — herramientas que permiten crear interfaces complejas
+          y completamente responsivas sin necesidad de JavaScript para el estilo visual.
+        </p>
+        <div class="lang-tags">
+          <span class="lang-tag">Estilo visual</span>
+          <span class="lang-tag">Responsive</span>
+          <span class="lang-tag">Animaciones</span>
+          <span class="lang-tag">Grid</span>
+          <span class="lang-tag">Flexbox</span>
+        </div>
+      </div>
+
+      <div class="lang-code-panel">
+        <div class="code-topbar">
+          <div class="dot-r"></div><div class="dot-y"></div><div class="dot-g"></div>
+          <span class="code-fname">styles.css</span>
+        </div>
+        <div class="code-block">
+          <div class="code-line"><span class="ln">1</span><span class="lc"><span class="c-cmt">/* Variables y reset */</span></span></div>
+          <div class="code-line"><span class="ln">2</span><span class="lc"><span class="c-sel">:root</span> <span class="c-pun">{</span></span></div>
+          <div class="code-line"><span class="ln">3</span><span class="lc">  <span class="c-prop">--rojo</span><span class="c-op">:</span> <span class="c-val">#e50914</span><span class="c-pun">;</span></span></div>
+          <div class="code-line"><span class="ln">4</span><span class="lc">  <span class="c-prop">--negro</span><span class="c-op">:</span> <span class="c-val">#080808</span><span class="c-pun">;</span></span></div>
+          <div class="code-line"><span class="ln">5</span><span class="lc"><span class="c-pun">}</span></span></div>
+          <div class="code-line"><span class="ln">6</span><span class="lc"></span></div>
+          <div class="code-line"><span class="ln">7</span><span class="lc"><span class="c-sel">.tarjeta</span> <span class="c-pun">{</span></span></div>
+          <div class="code-line"><span class="ln">8</span><span class="lc">  <span class="c-prop">display</span><span class="c-op">:</span> <span class="c-val">flex</span><span class="c-pun">;</span></span></div>
+          <div class="code-line"><span class="ln">9</span><span class="lc">  <span class="c-prop">background</span><span class="c-op">:</span> <span class="c-fn">var</span><span class="c-pun">(</span><span class="c-prop">--negro</span><span class="c-pun">);</span></span></div>
+          <div class="code-line"><span class="ln">10</span><span class="lc">  <span class="c-prop">border</span><span class="c-op">:</span> <span class="c-num">1px</span> <span class="c-val">solid</span> <span class="c-fn">var</span><span class="c-pun">(</span><span class="c-prop">--rojo</span><span class="c-pun">);</span></span></div>
+          <div class="code-line"><span class="ln">11</span><span class="lc">  <span class="c-prop">transition</span><span class="c-op">:</span> <span class="c-val">transform</span> <span class="c-num">.3s</span><span class="c-pun">;</span></span></div>
+          <div class="code-line"><span class="ln">12</span><span class="lc"><span class="c-pun">}</span></span></div>
+          <div class="code-line"><span class="ln">13</span><span class="lc"></span></div>
+          <div class="code-line"><span class="ln">14</span><span class="lc"><span class="c-sel">.tarjeta:hover</span> <span class="c-pun">{</span></span></div>
+          <div class="code-line"><span class="ln">15</span><span class="lc">  <span class="c-prop">transform</span><span class="c-op">:</span> <span class="c-fn">translateY</span><span class="c-pun">(</span><span class="c-num">-6px</span><span class="c-pun">);</span></span></div>
+          <div class="code-line"><span class="ln">16</span><span class="lc">  <span class="c-prop">box-shadow</span><span class="c-op">:</span> <span class="c-num">0 0 20px</span> <span class="c-fn">var</span><span class="c-pun">(</span><span class="c-prop">--rojo</span><span class="c-pun">);</span></span></div>
+          <div class="code-line"><span class="ln">17</span><span class="lc"><span class="c-pun">}</span></span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="lang-img-row">
+      <img src="ImagenCss3.jpg" height="120" width="200"/>
+      <div class="lang-img-caption">
+        <p class="img-cap-title">El Estilo Visual de la Web</p>
+        <p class="img-cap-text">Sin CSS, la web sería texto plano sin color ni forma. CSS transforma estructuras HTML crudas en interfaces visuales atractivas. Las animaciones, las transiciones suaves y los diseños responsivos que ves en cualquier sitio moderno son posibles gracias a CSS3 y sus capacidades de diseño avanzado.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── JavaScript ── -->
+  <div class="lang-block reveal" id="javascript">
+    <div class="lang-tabbar">
+      <div class="lang-tab active">
+        <div class="lang-tab-dot" style="background:#f7df1e;"></div>
+        app.js
+      </div>
+      <div class="tab-spacer"></div>
+      <span class="lang-badge">Lenguaje de programación</span>
+    </div>
+
+    <div class="lang-body">
+      <div class="lang-info">
+        <div class="lang-logo-row">
+          <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/javascript/javascript-original.svg" alt="JavaScript" class="lang-logo"/>
+          <div>
+            <p class="lang-name">JavaScript</p>
+            <p class="lang-type">Lenguaje de scripting web</p>
+          </div>
+        </div>
+        <p class="lang-desc">
+          <strong>JavaScript (JS)</strong> es el único lenguaje de programación que los navegadores
+          ejecutan de forma nativa. Agrega <em>interactividad, lógica y dinamismo</em> a las páginas web:
+          validación de formularios, animaciones complejas, peticiones a APIs, manejo del DOM y mucho más.
+          Creado en 1995 por Brendan Eich en solo 10 días, hoy es el lenguaje <strong>más usado del mundo</strong>
+          (según Stack Overflow, por 12 años consecutivos). Con Node.js puede usarse también en el servidor,
+          convirtiendo a JS en el único lenguaje full-stack. Frameworks como React, Vue y Angular lo han
+          elevado a la columna vertebral de la web moderna.
+        </p>
+        <div class="lang-tags">
+          <span class="lang-tag">DOM</span>
+          <span class="lang-tag">Async/Await</span>
+          <span class="lang-tag">APIs</span>
+          <span class="lang-tag">Node.js</span>
+          <span class="lang-tag">React</span>
+          <span class="lang-tag">Full-stack</span>
+        </div>
+      </div>
+
+      <div class="lang-code-panel">
+        <div class="code-topbar">
+          <div class="dot-r"></div><div class="dot-y"></div><div class="dot-g"></div>
+          <span class="code-fname">app.js</span>
+        </div>
+        <div class="code-block">
+          <div class="code-line"><span class="ln">1</span><span class="lc"><span class="c-cmt">// Función asíncrona con fetch</span></span></div>
+          <div class="code-line"><span class="ln">2</span><span class="lc"><span class="c-kw">const</span> <span class="c-fn">obtenerDatos</span> <span class="c-op">=</span> <span class="c-kw">async</span> <span class="c-pun">(</span><span class="c-var">url</span><span class="c-pun">)</span> <span class="c-op">=&gt;</span> <span class="c-pun">{</span></span></div>
+          <div class="code-line"><span class="ln">3</span><span class="lc">  <span class="c-kw">try</span> <span class="c-pun">{</span></span></div>
+          <div class="code-line"><span class="ln">4</span><span class="lc">    <span class="c-kw">const</span> <span class="c-var">res</span> <span class="c-op">=</span> <span class="c-kw">await</span> <span class="c-fn">fetch</span><span class="c-pun">(</span><span class="c-var">url</span><span class="c-pun">);</span></span></div>
+          <div class="code-line"><span class="ln">5</span><span class="lc">    <span class="c-kw">const</span> <span class="c-var">data</span> <span class="c-op">=</span> <span class="c-kw">await</span> <span class="c-var">res</span><span class="c-pun">.</span><span class="c-fn">json</span><span class="c-pun">();</span></span></div>
+          <div class="code-line"><span class="ln">6</span><span class="lc">    <span class="c-kw">return</span> <span class="c-var">data</span><span class="c-pun">;</span></span></div>
+          <div class="code-line"><span class="ln">7</span><span class="lc">  <span class="c-pun">}</span> <span class="c-kw">catch</span> <span class="c-pun">(</span><span class="c-var">err</span><span class="c-pun">)</span> <span class="c-pun">{</span></span></div>
+          <div class="code-line"><span class="ln">8</span><span class="lc">    <span class="c-var">console</span><span class="c-pun">.</span><span class="c-fn">error</span><span class="c-pun">(</span><span class="c-str">"Error:"</span><span class="c-pun">,</span> <span class="c-var">err</span><span class="c-pun">);</span></span></div>
+          <div class="code-line"><span class="ln">9</span><span class="lc">  <span class="c-pun">}</span></span></div>
+          <div class="code-line"><span class="ln">10</span><span class="lc"><span class="c-pun">};</span></span></div>
+          <div class="code-line"><span class="ln">11</span><span class="lc"></span></div>
+          <div class="code-line"><span class="ln">12</span><span class="lc"><span class="c-cmt">// Manipulación del DOM</span></span></div>
+          <div class="code-line"><span class="ln">13</span><span class="lc"><span class="c-var">document</span><span class="c-pun">.</span><span class="c-fn">querySelectorAll</span><span class="c-pun">(</span><span class="c-str">".card"</span><span class="c-pun">)</span></span></div>
+          <div class="code-line"><span class="ln">14</span><span class="lc">  <span class="c-pun">.</span><span class="c-fn">forEach</span><span class="c-pun">(</span><span class="c-var">el</span> <span class="c-op">=&gt;</span> <span class="c-pun">{</span></span></div>
+          <div class="code-line"><span class="ln">15</span><span class="lc">    <span class="c-var">el</span><span class="c-pun">.</span><span class="c-fn">addEventListener</span><span class="c-pun">(</span><span class="c-str">"click"</span><span class="c-pun">,</span></span></div>
+          <div class="code-line"><span class="ln">16</span><span class="lc">      <span class="c-pun">()</span> <span class="c-op">=&gt;</span> <span class="c-var">el</span><span class="c-pun">.</span><span class="c-var">classList</span><span class="c-pun">.</span><span class="c-fn">toggle</span><span class="c-pun">(</span><span class="c-str">"activo"</span><span class="c-pun">)</span></span></div>
+          <div class="code-line"><span class="ln">17</span><span class="lc">    <span class="c-pun">);</span></span></div>
+          <div class="code-line"><span class="ln">18</span><span class="lc">  <span class="c-pun">});</span></span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="lang-img-row">
+      <img src="ImagenJava.png" height="120" width="200"/>
+      <div class="lang-img-caption">
+        <p class="img-cap-title">El Lenguaje más Usado del Mundo</p>
+        <p class="img-cap-text">JavaScript está en absolutamente todo: el botón que reacciona al clic, el mapa interactivo, el chat en tiempo real, la app móvil de tu banco. Con la llegada de Node.js en 2009, salió del navegador y conquistó el servidor. Hoy un solo desarrollador puede construir aplicaciones completas usando únicamente JavaScript.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Python Web ── -->
+  <div class="lang-block reveal" id="python">
+    <div class="lang-tabbar">
+      <div class="lang-tab active">
+        <div class="lang-tab-dot" style="background:#3572a5;"></div>
+        server.py
+      </div>
+      <div class="tab-spacer"></div>
+      <span class="lang-badge">Backend / IA</span>
+    </div>
+
+    <div class="lang-body">
+      <div class="lang-info">
+        <div class="lang-logo-row">
+          <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/python/python-original.svg" alt="Python" class="lang-logo"/>
+          <div>
+            <p class="lang-name">Python</p>
+            <p class="lang-type">Backend & Ciencia de Datos</p>
+          </div>
+        </div>
+        <p class="lang-desc">
+          <strong>Python</strong> es el lenguaje más versátil del ecosistema digital moderno.
+          En desarrollo web se usa principalmente en el <em>backend</em> con frameworks como
+          Django (completo) o Flask (minimalista). Su sintaxis limpia y legible lo hace ideal
+          para <strong>principiantes y expertos por igual</strong>. Más allá de la web, Python
+          domina la <em>Inteligencia Artificial, el Machine Learning y la ciencia de datos</em>
+          con librerías como TensorFlow, PyTorch, Pandas y NumPy. Es el lenguaje predilecto
+          de investigadores, data scientists y desarrolladores de IA en todo el mundo.
+        </p>
+        <div class="lang-tags">
+          <span class="lang-tag">Django</span>
+          <span class="lang-tag">Flask</span>
+          <span class="lang-tag">IA/ML</span>
+          <span class="lang-tag">Data Science</span>
+          <span class="lang-tag">APIs REST</span>
+        </div>
+      </div>
+
+      <div class="lang-code-panel">
+        <div class="code-topbar">
+          <div class="dot-r"></div><div class="dot-y"></div><div class="dot-g"></div>
+          <span class="code-fname">server.py</span>
+        </div>
+        <div class="code-block">
+          <div class="code-line"><span class="ln">1</span><span class="lc"><span class="c-cmt"># API REST con Flask</span></span></div>
+          <div class="code-line"><span class="ln">2</span><span class="lc"><span class="c-kw">from</span> <span class="c-var">flask</span> <span class="c-kw">import</span> <span class="c-cls">Flask</span><span class="c-pun">,</span> <span class="c-fn">jsonify</span></span></div>
+          <div class="code-line"><span class="ln">3</span><span class="lc"></span></div>
+          <div class="code-line"><span class="ln">4</span><span class="lc"><span class="c-var">app</span> <span class="c-op">=</span> <span class="c-cls">Flask</span><span class="c-pun">(</span><span class="c-var">__name__</span><span class="c-pun">)</span></span></div>
+          <div class="code-line"><span class="ln">5</span><span class="lc"></span></div>
+          <div class="code-line"><span class="ln">6</span><span class="lc"><span class="c-fn">@app.route</span><span class="c-pun">(</span><span class="c-str">"/api/lenguajes"</span><span class="c-pun">)</span></span></div>
+          <div class="code-line"><span class="ln">7</span><span class="lc"><span class="c-kw">def</span> <span class="c-fn">get_lenguajes</span><span class="c-pun">():</span></span></div>
+          <div class="code-line"><span class="ln">8</span><span class="lc">  <span class="c-var">data</span> <span class="c-op">=</span> <span class="c-pun">[</span></span></div>
+          <div class="code-line"><span class="ln">9</span><span class="lc">    <span class="c-pun">{</span><span class="c-str">"nombre"</span><span class="c-pun">:</span> <span class="c-str">"Python"</span><span class="c-pun">,</span> <span class="c-str">"tipo"</span><span class="c-pun">:</span> <span class="c-str">"backend"</span><span class="c-pun">},</span></span></div>
+          <div class="code-line"><span class="ln">10</span><span class="lc">    <span class="c-pun">{</span><span class="c-str">"nombre"</span><span class="c-pun">:</span> <span class="c-str">"JS"</span><span class="c-pun">,</span> <span class="c-str">"tipo"</span><span class="c-pun">:</span> <span class="c-str">"full-stack"</span><span class="c-pun">},</span></span></div>
+          <div class="code-line"><span class="ln">11</span><span class="lc">  <span class="c-pun">]</span></span></div>
+          <div class="code-line"><span class="ln">12</span><span class="lc">  <span class="c-kw">return</span> <span class="c-fn">jsonify</span><span class="c-pun">(</span><span class="c-var">data</span><span class="c-pun">)</span></span></div>
+          <div class="code-line"><span class="ln">13</span><span class="lc"></span></div>
+          <div class="code-line"><span class="ln">14</span><span class="lc"><span class="c-kw">if</span> <span class="c-var">__name__</span> <span class="c-op">==</span> <span class="c-str">"__main__"</span><span class="c-pun">:</span></span></div>
+          <div class="code-line"><span class="ln">15</span><span class="lc">  <span class="c-var">app</span><span class="c-pun">.</span><span class="c-fn">run</span><span class="c-pun">(</span><span class="c-var">debug</span><span class="c-op">=</span><span class="c-kw">True</span><span class="c-pun">)</span></span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="lang-img-row">
+            <img src="ImagenPython.png" height="120" width="200"/>
+      <div class="lang-img-caption">
+        <p class="img-cap-title">El Lenguaje de la Inteligencia Artificial</p>
+        <p class="img-cap-text">Python no solo construye sitios web — construye el futuro. ChatGPT, Gemini, los modelos de visión por computadora y los sistemas de recomendación de Netflix y Spotify están escritos en Python. Su sintaxis limpia y su ecosistema de librerías lo hacen indispensable en la era de la IA.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════ ESCRITORIO ════ -->
+  <div class="cat-separator reveal">
+    <div class="cat-line"></div>
+    <span class="cat-label">Desarrollo de Escritorio</span>
+    <div class="cat-line"></div>
+  </div>
+
+  <div id="escritorio" class="sec-header reveal" style="padding-top:0;">
+    <p class="sec-eyebrow">// Desktop Apps</p>
+    <h2 class="sec-title">Lenguajes para Escritorio</h2>
+  </div>
+
+  <!-- ── Java ── -->
+  <div class="lang-block reveal" id="java">
+    <div class="lang-tabbar">
+      <div class="lang-tab active">
+        <div class="lang-tab-dot" style="background:#ea2d2e;"></div>
+        Main.java
+      </div>
+      <div class="tab-spacer"></div>
+      <span class="lang-badge">Orientado a objetos</span>
+    </div>
+
+    <div class="lang-body">
+      <div class="lang-info">
+        <div class="lang-logo-row">
+          <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/java/java-original.svg" alt="Java" class="lang-logo"/>
+          <div>
+            <p class="lang-name">Java</p>
+            <p class="lang-type">Aplicaciones de escritorio & Android</p>
+          </div>
+        </div>
+        <p class="lang-desc">
+          <strong>Java</strong> es uno de los lenguajes más establecidos de la industria, creado por
+          Sun Microsystems en 1995 bajo el lema <em>"Write Once, Run Anywhere"</em>. Su máquina virtual
+          (JVM) permite que el mismo código corra en Windows, macOS y Linux sin modificaciones.
+          Es el lenguaje principal para aplicaciones empresariales de gran escala, fue el lenguaje
+          oficial de <strong>Android</strong> durante años, y se usa ampliamente en sistemas bancarios,
+          plataformas de e-commerce y aplicaciones de escritorio con frameworks como JavaFX y Swing.
+        </p>
+        <div class="lang-tags">
+          <span class="lang-tag">OOP</span>
+          <span class="lang-tag">JVM</span>
+          <span class="lang-tag">Android</span>
+          <span class="lang-tag">Spring</span>
+          <span class="lang-tag">Enterprise</span>
+        </div>
+      </div>
+
+      <div class="lang-code-panel">
+        <div class="code-topbar">
+          <div class="dot-r"></div><div class="dot-y"></div><div class="dot-g"></div>
+          <span class="code-fname">Main.java</span>
+        </div>
+        <div class="code-block">
+          <div class="code-line"><span class="ln">1</span><span class="lc"><span class="c-cmt">// Clase con herencia en Java</span></span></div>
+          <div class="code-line"><span class="ln">2</span><span class="lc"><span class="c-kw">public class</span> <span class="c-cls">Estudiante</span> <span class="c-kw">extends</span> <span class="c-cls">Persona</span> <span class="c-pun">{</span></span></div>
+          <div class="code-line"><span class="ln">3</span><span class="lc">  <span class="c-kw">private</span> <span class="c-cls">String</span> <span class="c-var">materia</span><span class="c-pun">;</span></span></div>
+          <div class="code-line"><span class="ln">4</span><span class="lc"></span></div>
+          <div class="code-line"><span class="ln">5</span><span class="lc">  <span class="c-kw">public</span> <span class="c-fn">Estudiante</span><span class="c-pun">(</span><span class="c-cls">String</span> <span class="c-var">nombre</span><span class="c-pun">,</span></span></div>
+          <div class="code-line"><span class="ln">6</span><span class="lc">                   <span class="c-cls">String</span> <span class="c-var">materia</span><span class="c-pun">)</span> <span class="c-pun">{</span></span></div>
+          <div class="code-line"><span class="ln">7</span><span class="lc">    <span class="c-kw">super</span><span class="c-pun">(</span><span class="c-var">nombre</span><span class="c-pun">);</span></span></div>
+          <div class="code-line"><span class="ln">8</span><span class="lc">    <span class="c-kw">this</span><span class="c-pun">.</span><span class="c-var">materia</span> <span class="c-op">=</span> <span class="c-var">materia</span><span class="c-pun">;</span></span></div>
+          <div class="code-line"><span class="ln">9</span><span class="lc">  <span class="c-pun">}</span></span></div>
+          <div class="code-line"><span class="ln">10</span><span class="lc"></span></div>
+          <div class="code-line"><span class="ln">11</span><span class="lc">  <span class="c-kw">public void</span> <span class="c-fn">estudiar</span><span class="c-pun">()</span> <span class="c-pun">{</span></span></div>
+          <div class="code-line"><span class="ln">12</span><span class="lc">    <span class="c-cls">System</span><span class="c-pun">.</span><span class="c-var">out</span><span class="c-pun">.</span><span class="c-fn">println</span><span class="c-pun">(</span></span></div>
+          <div class="code-line"><span class="ln">13</span><span class="lc">      <span class="c-str">"Estudiando: "</span> <span class="c-op">+</span> <span class="c-var">materia</span></span></div>
+          <div class="code-line"><span class="ln">14</span><span class="lc">    <span class="c-pun">);</span></span></div>
+          <div class="code-line"><span class="ln">15</span><span class="lc">  <span class="c-pun">}</span></span></div>
+          <div class="code-line"><span class="ln">16</span><span class="lc"><span class="c-pun">}</span></span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="lang-img-row">
+            <img src="ImagenJava.jpg" height="120" width="200"/>
+      <div class="lang-img-caption">
+        <p class="img-cap-title">El Gigante Empresarial</p>
+        <p class="img-cap-text">Desde los sistemas de los bancos hasta las apps de Android, Java ha estado presente en la infraestructura digital del planeta por casi 30 años. Su modelo de programación orientada a objetos enseña fundamentos de ingeniería de software que aplican en cualquier lenguaje.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── C# ── -->
+  <div class="lang-block reveal" id="csharp">
+    <div class="lang-tabbar">
+      <div class="lang-tab active">
+        <div class="lang-tab-dot" style="background:#9b4f96;"></div>
+        Program.cs
+      </div>
+      <div class="tab-spacer"></div>
+      <span class="lang-badge">Microsoft · .NET</span>
+    </div>
+
+    <div class="lang-body">
+      <div class="lang-info">
+        <div class="lang-logo-row">
+          <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/csharp/csharp-original.svg" alt="C#" class="lang-logo"/>
+          <div>
+            <p class="lang-name">C#</p>
+            <p class="lang-type">Aplicaciones .NET, Videojuegos (Unity)</p>
+          </div>
+        </div>
+        <p class="lang-desc">
+          <strong>C# (C Sharp)</strong>, creado por Microsoft en 2000, es un lenguaje multiparadigma
+          del ecosistema <em>.NET</em>. Es la opción principal para desarrollar aplicaciones de escritorio
+          en Windows (WPF, WinForms), aplicaciones empresariales con ASP.NET, y es el lenguaje oficial
+          del motor de videojuegos <strong>Unity</strong> — usado en miles de juegos para PC, consolas y móviles.
+          Su sintaxis es similar a Java pero incorpora características más modernas como LINQ, propiedades
+          automáticas, records y nullable reference types.
+        </p>
+        <div class="lang-tags">
+          <span class="lang-tag">.NET</span>
+          <span class="lang-tag">Unity</span>
+          <span class="lang-tag">WPF</span>
+          <span class="lang-tag">ASP.NET</span>
+          <span class="lang-tag">LINQ</span>
+        </div>
+      </div>
+
+      <div class="lang-code-panel">
+        <div class="code-topbar">
+          <div class="dot-r"></div><div class="dot-y"></div><div class="dot-g"></div>
+          <span class="code-fname">Program.cs</span>
+        </div>
+        <div class="code-block">
+          <div class="code-line"><span class="ln">1</span><span class="lc"><span class="c-cmt">// C# con LINQ y propiedades</span></span></div>
+          <div class="code-line"><span class="ln">2</span><span class="lc"><span class="c-kw">using</span> <span class="c-cls">System.Collections.Generic</span><span class="c-pun">;</span></span></div>
+          <div class="code-line"><span class="ln">3</span><span class="lc"></span></div>
+          <div class="code-line"><span class="ln">4</span><span class="lc"><span class="c-kw">public record</span> <span class="c-cls">Lenguaje</span><span class="c-pun">(</span></span></div>
+          <div class="code-line"><span class="ln">5</span><span class="lc">  <span class="c-cls">string</span> <span class="c-var">Nombre</span><span class="c-pun">,</span></span></div>
+          <div class="code-line"><span class="ln">6</span><span class="lc">  <span class="c-cls">string</span> <span class="c-var">Tipo</span></span></div>
+          <div class="code-line"><span class="ln">7</span><span class="lc"><span class="c-pun">);</span></span></div>
+          <div class="code-line"><span class="ln">8</span><span class="lc"></span></div>
+          <div class="code-line"><span class="ln">9</span><span class="lc"><span class="c-kw">var</span> <span class="c-var">lista</span> <span class="c-op">=</span> <span class="c-kw">new</span> <span class="c-cls">List</span><span class="c-pun">&lt;</span><span class="c-cls">Lenguaje</span><span class="c-pun">&gt;</span> <span class="c-pun">{</span></span></div>
+          <div class="code-line"><span class="ln">10</span><span class="lc">  <span class="c-kw">new</span><span class="c-pun">(</span><span class="c-str">"C#"</span><span class="c-pun">,</span> <span class="c-str">"Desktop"</span><span class="c-pun">),</span></span></div>
+          <div class="code-line"><span class="ln">11</span><span class="lc">  <span class="c-kw">new</span><span class="c-pun">(</span><span class="c-str">"Python"</span><span class="c-pun">,</span> <span class="c-str">"IA"</span><span class="c-pun">)</span></span></div>
+          <div class="code-line"><span class="ln">12</span><span class="lc"><span class="c-pun">};</span></span></div>
+          <div class="code-line"><span class="ln">13</span><span class="lc"></span></div>
+          <div class="code-line"><span class="ln">14</span><span class="lc"><span class="c-kw">var</span> <span class="c-var">desktop</span> <span class="c-op">=</span> <span class="c-var">lista</span></span></div>
+          <div class="code-line"><span class="ln">15</span><span class="lc">  <span class="c-pun">.</span><span class="c-fn">Where</span><span class="c-pun">(</span><span class="c-var">l</span> <span class="c-op">=&gt;</span> <span class="c-var">l</span><span class="c-pun">.</span><span class="c-var">Tipo</span> <span class="c-op">==</span> <span class="c-str">"Desktop"</span><span class="c-pun">)</span></span></div>
+          <div class="code-line"><span class="ln">16</span><span class="lc">  <span class="c-pun">.</span><span class="c-fn">ToList</span><span class="c-pun">();</span></span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="lang-img-row">
+            <img src="ImagenC.jpg" height="130" width="200"/>
+      <div class="lang-img-caption">
+        <p class="img-cap-title">El Lenguaje de Windows y los Videojuegos</p>
+        <p class="img-cap-text">C# es la opción más robusta para desarrollar en el ecosistema Microsoft. Pero su mayor protagonismo en la cultura digital actual viene de Unity: prácticamente la mitad de los videojuegos del mundo — desde indie hasta AAA — están escritos en C# con Unity.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════ DISEÑO ════ -->
+  <div class="cat-separator reveal">
+    <div class="cat-line"></div>
+    <span class="cat-label">Diseño & Maquetación</span>
+    <div class="cat-line"></div>
+  </div>
+
+  <div id="diseno" class="sec-header reveal" style="padding-top:0;">
+    <p class="sec-eyebrow">// UI/UX & Layout</p>
+    <h2 class="sec-title">Diseño y Maquetación</h2>
+  </div>
+
+  <!-- ── Figma ── -->
+  <div class="lang-block reveal" id="figma">
+    <div class="lang-tabbar">
+      <div class="lang-tab active">
+        <div class="lang-tab-dot" style="background:#a259ff;"></div>
+        diseño.fig
+      </div>
+      <div class="tab-spacer"></div>
+      <span class="lang-badge">Herramienta de diseño UI</span>
+    </div>
+
+    <div class="lang-body">
+      <div class="lang-info">
+        <div class="lang-logo-row">
+          <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/figma/figma-original.svg" alt="Figma" class="lang-logo"/>
+          <div>
+            <p class="lang-name">Figma</p>
+            <p class="lang-type">Diseño UI/UX · Prototipado</p>
+          </div>
+        </div>
+        <p class="lang-desc">
+          <strong>Figma</strong> es la herramienta de diseño de interfaces más usada del mundo.
+          Basada en la web, permite <em>diseñar, prototipar y colaborar en tiempo real</em> con todo el equipo.
+          No es un lenguaje de programación en el sentido estricto, pero su sistema de componentes,
+          variables de diseño y auto-layout son tan lógicos y estructurados que muchos lo consideran
+          <strong>programación visual</strong>. Figma es el puente entre el diseño y el desarrollo:
+          genera código CSS automáticamente, exporta assets y permite a los desarrolladores inspeccionar
+          cada propiedad de diseño directamente desde el navegador.
+        </p>
+        <div class="lang-tags">
+          <span class="lang-tag">UI Design</span>
+          <span class="lang-tag">Prototipado</span>
+          <span class="lang-tag">Componentes</span>
+          <span class="lang-tag">Auto-layout</span>
+          <span class="lang-tag">Dev Mode</span>
+        </div>
+      </div>
+
+      <div class="lang-code-panel">
+        <div class="code-topbar">
+          <div class="dot-r"></div><div class="dot-y"></div><div class="dot-g"></div>
+          <span class="code-fname">Figma → CSS exportado</span>
+        </div>
+        <div class="code-block">
+          <div class="code-line"><span class="ln">1</span><span class="lc"><span class="c-cmt">/* CSS generado por Figma Dev Mode */</span></span></div>
+          <div class="code-line"><span class="ln">2</span><span class="lc"><span class="c-sel">.btn-primario</span> <span class="c-pun">{</span></span></div>
+          <div class="code-line"><span class="ln">3</span><span class="lc">  <span class="c-prop">display</span><span class="c-op">:</span> <span class="c-val">flex</span><span class="c-pun">;</span></span></div>
+          <div class="code-line"><span class="ln">4</span><span class="lc">  <span class="c-prop">width</span><span class="c-op">:</span> <span class="c-num">160px</span><span class="c-pun">;</span></span></div>
+          <div class="code-line"><span class="ln">5</span><span class="lc">  <span class="c-prop">height</span><span class="c-op">:</span> <span class="c-num">48px</span><span class="c-pun">;</span></span></div>
+          <div class="code-line"><span class="ln">6</span><span class="lc">  <span class="c-prop">background</span><span class="c-op">:</span> <span class="c-val">#E50914</span><span class="c-pun">;</span></span></div>
+          <div class="code-line"><span class="ln">7</span><span class="lc">  <span class="c-prop">border-radius</span><span class="c-op">:</span> <span class="c-num">0px</span><span class="c-pun">;</span></span></div>
+          <div class="code-line"><span class="ln">8</span><span class="lc">  <span class="c-prop">font-family</span><span class="c-op">:</span> <span class="c-str">'Bebas Neue'</span><span class="c-pun">;</span></span></div>
+          <div class="code-line"><span class="ln">9</span><span class="lc">  <span class="c-prop">font-size</span><span class="c-op">:</span> <span class="c-num">14px</span><span class="c-pun">;</span></span></div>
+          <div class="code-line"><span class="ln">10</span><span class="lc">  <span class="c-prop">letter-spacing</span><span class="c-op">:</span> <span class="c-num">0.2em</span><span class="c-pun">;</span></span></div>
+          <div class="code-line"><span class="ln">11</span><span class="lc">  <span class="c-prop">color</span><span class="c-op">:</span> <span class="c-val">#F0F0F0</span><span class="c-pun">;</span></span></div>
+          <div class="code-line"><span class="ln">12</span><span class="lc">  <span class="c-prop">align-items</span><span class="c-op">:</span> <span class="c-val">center</span><span class="c-pun">;</span></span></div>
+          <div class="code-line"><span class="ln">13</span><span class="lc">  <span class="c-prop">justify-content</span><span class="c-op">:</span> <span class="c-val">center</span><span class="c-pun">;</span></span></div>
+          <div class="code-line"><span class="ln">14</span><span class="lc"><span class="c-pun">}</span></span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="lang-img-row">
+            <img src="ImagenFigma.jfif" height="120" width="200"/>
+      <div class="lang-img-caption">
+        <p class="img-cap-title">El Estándar de la Industria del Diseño Digital</p>
+        <p class="img-cap-text">Toda app que usas — desde Instagram hasta tu aplicación bancaria — fue diseñada en algún momento en Figma (o su predecesor Sketch). Es la herramienta donde los diseñadores dan forma visual a las ideas antes de que los desarrolladores las conviertan en código real. Su modo colaborativo cambió para siempre el flujo de trabajo de los equipos digitales.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Sass / Tailwind ── -->
+  <div class="lang-block reveal" id="sass">
+    <div class="lang-tabbar">
+      <div class="lang-tab active">
+        <div class="lang-tab-dot" style="background:#cc6699;"></div>
+        estilos.scss
+      </div>
+      <div class="lang-tab">
+        <div class="lang-tab-dot" style="background:#38bdf8;"></div>
+        tailwind.config
+      </div>
+      <div class="tab-spacer"></div>
+      <span class="lang-badge">CSS Avanzado</span>
+    </div>
+
+    <div class="lang-body">
+      <div class="lang-info">
+        <div class="lang-logo-row">
+          <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/sass/sass-original.svg" alt="Sass" class="lang-logo"/>
+          <div>
+            <p class="lang-name">Sass / Tailwind</p>
+            <p class="lang-type">Preprocesadores y Frameworks CSS</p>
+          </div>
+        </div>
+        <p class="lang-desc">
+          <strong>Sass</strong> es un preprocesador CSS que añade superpoderes al CSS estándar:
+          variables, anidamiento, mixins, funciones y herencia. El código Sass se compila a CSS puro.
+          <strong>Tailwind CSS</strong>, por otro lado, es un framework de <em>utility-first</em>:
+          en lugar de escribir CSS personalizado, aplicas clases predefinidas directamente en el HTML.
+          Ambos enfoques buscan el mismo objetivo — hacer el CSS más mantenible, escalable y eficiente —
+          pero con filosofías opuestas. Tailwind domina en proyectos modernos con React y Next.js,
+          mientras Sass sigue siendo relevante en proyectos con metodologías BEM o ITCSS.
+        </p>
+        <div class="lang-tags">
+          <span class="lang-tag">Variables</span>
+          <span class="lang-tag">Mixins</span>
+          <span class="lang-tag">Nesting</span>
+          <span class="lang-tag">Utility-first</span>
+          <span class="lang-tag">Componentes</span>
+        </div>
+      </div>
+
+      <div class="lang-code-panel">
+        <div class="code-topbar">
+          <div class="dot-r"></div><div class="dot-y"></div><div class="dot-g"></div>
+          <span class="code-fname">estilos.scss</span>
+        </div>
+        <div class="code-block">
+          <div class="code-line"><span class="ln">1</span><span class="lc"><span class="c-cmt">// Variables y mixin en Sass</span></span></div>
+          <div class="code-line"><span class="ln">2</span><span class="lc"><span class="c-var">$rojo</span><span class="c-op">:</span> <span class="c-val">#e50914</span><span class="c-pun">;</span></span></div>
+          <div class="code-line"><span class="ln">3</span><span class="lc"><span class="c-var">$negro</span><span class="c-op">:</span> <span class="c-val">#080808</span><span class="c-pun">;</span></span></div>
+          <div class="code-line"><span class="ln">4</span><span class="lc"></span></div>
+          <div class="code-line"><span class="ln">5</span><span class="lc"><span class="c-kw">@mixin</span> <span class="c-fn">flex-center</span> <span class="c-pun">{</span></span></div>
+          <div class="code-line"><span class="ln">6</span><span class="lc">  <span class="c-prop">display</span><span class="c-op">:</span> <span class="c-val">flex</span><span class="c-pun">;</span></span></div>
+          <div class="code-line"><span class="ln">7</span><span class="lc">  <span class="c-prop">align-items</span><span class="c-op">:</span> <span class="c-val">center</span><span class="c-pun">;</span></span></div>
+          <div class="code-line"><span class="ln">8</span><span class="lc">  <span class="c-prop">justify-content</span><span class="c-op">:</span> <span class="c-val">center</span><span class="c-pun">;</span></span></div>
+          <div class="code-line"><span class="ln">9</span><span class="lc"><span class="c-pun">}</span></span></div>
+          <div class="code-line"><span class="ln">10</span><span class="lc"></span></div>
+          <div class="code-line"><span class="ln">11</span><span class="lc"><span class="c-sel">.boton</span> <span class="c-pun">{</span></span></div>
+          <div class="code-line"><span class="ln">12</span><span class="lc">  <span class="c-kw">@include</span> <span class="c-fn">flex-center</span><span class="c-pun">;</span></span></div>
+          <div class="code-line"><span class="ln">13</span><span class="lc">  <span class="c-prop">background</span><span class="c-op">:</span> <span class="c-var">$rojo</span><span class="c-pun">;</span></span></div>
+          <div class="code-line"><span class="ln">14</span><span class="lc"></span></div>
+          <div class="code-line"><span class="ln">15</span><span class="lc">  <span class="c-sel">&amp;:hover</span> <span class="c-pun">{</span></span></div>
+          <div class="code-line"><span class="ln">16</span><span class="lc">    <span class="c-prop">background</span><span class="c-op">:</span> <span class="c-fn">darken</span><span class="c-pun">(</span><span class="c-var">$rojo</span><span class="c-pun">,</span> <span class="c-num">10%</span><span class="c-pun">);</span></span></div>
+          <div class="code-line"><span class="ln">17</span><span class="lc">  <span class="c-pun">}</span></span></div>
+          <div class="code-line"><span class="ln">18</span><span class="lc"><span class="c-pun">}</span></span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="lang-img-row">
+            <img src="ImagenSass.jpg" height="120" width="200"/>
+      <div class="lang-img-caption">
+        <p class="img-cap-title">CSS con Superpoderes</p>
+        <p class="img-cap-text">Sass y Tailwind representan dos filosofías distintas para resolver el mismo problema: CSS a gran escala se vuelve caótico. Sass lo organiza con programación; Tailwind lo elimina casi por completo con utilidades atómicas. Ambos son esenciales en el toolkit de cualquier desarrollador web moderno.</p>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /page -->
+</div><!-- /layout -->
+
+<footer class="site-footer">
+    <p> <span>✦ CENTRO DE BARCHILLERATO TECNOLOGICO INDUSTRIAL Y DE SERVICIOS NUMERO 144 ✦</span> </p>
+  <p>Segundo Semestre de IA</span> &nbsp;·&nbsp; Paula Estrada Alegria</p>
+</footer>
+
+<script>
+/* ══ HUD CANVAS — partículas flotantes con glow en movimiento ══ */
+(function () {
+  const canvas = document.getElementById('hudCanvas');
+  const ctx    = canvas.getContext('2d');
+  const hero   = canvas.parentElement;
+  const R      = (a) => `rgba(229,9,20,${a})`;
+
+  let W, H, particles = [], sparks = [];
+  let frame = 0;
+
+  function resize() {
+    W = canvas.width  = hero.offsetWidth;
+    H = canvas.height = hero.offsetHeight;
+    init();
+  }
+
+  /* Partículas — puntos flotantes con brillo sutil */
+  function makeParticle() {
+    const edge = Math.random() > 0.5; // aparece en bordes, no en el centro
+    let x, y;
+    if (edge) {
+      // borde izquierdo/derecho
+      x = Math.random() > 0.5 ? W * 0.05 + Math.random() * W * 0.2 : W * 0.75 + Math.random() * W * 0.2;
+      y = Math.random() * H;
+    } else {
+      // borde superior/inferior
+      x = Math.random() * W;
+      y = Math.random() > 0.5 ? Math.random() * H * 0.2 : H * 0.8 + Math.random() * H * 0.2;
+    }
+    return {
+      x, y,
+      vx: (Math.random() - 0.5) * 0.3,
+      vy: (Math.random() - 0.5) * 0.3,
+      r:  0.8 + Math.random() * 1.6,
+      alpha: 0.15 + Math.random() * 0.45,
+      phase: Math.random() * Math.PI * 2,
+      speed: 0.008 + Math.random() * 0.015
+    };
+  }
+
+  /* Sparks — destellos rápidos breves */
+  function makeSpark() {
+    const side = Math.floor(Math.random() * 4);
+    let x, y;
+    if (side === 0) { x = Math.random() * W; y = Math.random() * H * 0.15; }
+    else if (side === 1) { x = Math.random() * W; y = H * 0.85 + Math.random() * H * 0.15; }
+    else if (side === 2) { x = Math.random() * W * 0.15; y = Math.random() * H; }
+    else { x = W * 0.85 + Math.random() * W * 0.15; y = Math.random() * H; }
+    return { x, y, life: 1, decay: 0.02 + Math.random() * 0.04 };
+  }
+
+  function init() {
+    particles = Array.from({ length: 55 }, makeParticle);
+    sparks = [];
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+    frame++;
+
+    /* Spawn occasional sparks */
+    if (Math.random() > 0.97) sparks.push(makeSpark());
+
+    /* Draw particles */
+    particles.forEach(p => {
+      p.phase += p.speed;
+      p.x += p.vx;
+      p.y += p.vy;
+
+      // Bounce at soft margins
+      if (p.x < 20 || p.x > W - 20) p.vx *= -1;
+      if (p.y < 20 || p.y > H - 20) p.vy *= -1;
+
+      const tw = 0.75 + 0.25 * Math.sin(p.phase);
+      const a  = p.alpha * tw;
+
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+      ctx.fillStyle = R(a);
+      // Glow solo en el movimiento (partículas más brillantes)
+      if (a > 0.4) {
+        ctx.shadowColor = R(0.5);
+        ctx.shadowBlur  = 6;
+      }
+      ctx.fill();
+      ctx.shadowBlur = 0;
+    });
+
+    /* Draw connecting lines between nearby particles */
+    for (let i = 0; i < particles.length; i++) {
+      for (let j = i + 1; j < particles.length; j++) {
+        const dx = particles[i].x - particles[j].x;
+        const dy = particles[i].y - particles[j].y;
+        const d  = Math.sqrt(dx * dx + dy * dy);
+        if (d < 110) {
+          const a = (1 - d / 110) * 0.12;
+          ctx.beginPath();
+          ctx.moveTo(particles[i].x, particles[i].y);
+          ctx.lineTo(particles[j].x, particles[j].y);
+          ctx.strokeStyle = R(a);
+          ctx.lineWidth = 0.5;
+          ctx.stroke();
+        }
+      }
+    }
+
+    /* Draw sparks */
+    sparks.forEach((s, i) => {
+      s.life -= s.decay;
+      if (s.life <= 0) { sparks.splice(i, 1); return; }
+
+      const size = s.life * 3;
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, size, 0, Math.PI * 2);
+      ctx.fillStyle = R(s.life * 0.7);
+      ctx.shadowColor = R(0.8);
+      ctx.shadowBlur  = 12;
+      ctx.fill();
+      ctx.shadowBlur = 0;
+    });
+
+    requestAnimationFrame(draw);
+  }
+
+  resize();
+  draw();
+  window.addEventListener('resize', resize);
+})();
+
+/* ══ STICKY NAV ACTIVE ══ */
+(function () {
+  const sections = document.querySelectorAll('#web, #escritorio, #diseno');
+  const navItems = document.querySelectorAll('.lang-nav-item');
+
+  const io = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        navItems.forEach(n => n.classList.remove('active'));
+        const target = document.querySelector(`.lang-nav-item[href="#${e.target.id}"]`);
+        if (target) target.classList.add('active');
+      }
+    });
+  }, { threshold: 0.3 });
+
+  sections.forEach(s => io.observe(s));
+})();
+
+/* ══ SIDEBAR ACTIVE NAV ══ */
+(function () {
+  const blocks = document.querySelectorAll('.lang-block[id], .sec-header[id]');
+  const links  = document.querySelectorAll('.nav-link');
+
+  const io = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        links.forEach(l => l.classList.remove('active'));
+        const a = document.querySelector(`.nav-link[href="#${e.target.id}"]`);
+        if (a) a.classList.add('active');
+      }
+    });
+  }, { threshold: 0.35 });
+
+  blocks.forEach(b => io.observe(b));
+})();
+
+/* ══ SCROLL REVEAL ══ */
+(function () {
+  const els = document.querySelectorAll('.reveal');
+  const io  = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        e.target.classList.add('visible');
+        io.unobserve(e.target);
+      }
+    });
+  }, { threshold: 0.07, rootMargin: '0px 0px -20px 0px' });
+  els.forEach(el => io.observe(el));
+})();
+
+/* ══ READING PROGRESS BAR ══ */
+(function () {
+  const bar = document.getElementById('readingBar');
+  if (!bar) return;
+  window.addEventListener('scroll', () => {
+    const pct = window.scrollY / (document.documentElement.scrollHeight - window.innerHeight) * 100;
+    bar.style.width = Math.min(pct, 100) + '%';
+  }, { passive: true });
+})();
+
+/* ══ SCROLL TO TOP ══ */
+(function () {
+  const btn = document.getElementById('btnTop');
+  if (!btn) return;
+  window.addEventListener('scroll', () => {
+    btn.classList.toggle('show', window.scrollY > 400);
+  }, { passive: true });
+  btn.addEventListener('click', e => {
+    e.preventDefault();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+})();
+</script>
+
+</body>
+</html>
