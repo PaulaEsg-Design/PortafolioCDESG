@@ -1,0 +1,1087 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>CONCEPTOS DE PYTHON // Tarea 6</title>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Rajdhani:wght@300;400;600;700&family=JetBrains+Mono:wght@300;400;700&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --black:    #060608;
+      --deep:     #0c0c10;
+      --panel:    #111116;
+      --red:      #e50914;
+      --red-dim:  rgba(229,9,20,0.15);
+      --red-glow: rgba(229,9,20,0.32);
+      --white:    #eeeeee;
+      --grey:     #1c1c22;
+      --grey-lt:  #2e2e38;
+      --muted:    rgba(238,238,238,0.44);
+      --mono:    'JetBrains Mono', monospace;
+      --display: 'Bebas Neue', sans-serif;
+      --body:    'Rajdhani', sans-serif;
+    }
+
+    html { scroll-behavior: smooth; }
+    body { background: var(--black); color: var(--white); font-family: var(--body); overflow-x: hidden; }
+
+    ::-webkit-scrollbar { width: 3px; }
+    ::-webkit-scrollbar-track { background: var(--black); }
+    ::-webkit-scrollbar-thumb { background: var(--red); }
+
+    /* READING BAR */
+    .reading-bar {
+      position: fixed; top: 0; left: 0; width: 0%; height: 2px;
+      background: var(--red); box-shadow: 0 0 8px var(--red);
+      z-index: 9999; transition: width 0.08s linear;
+    }
+
+    /* BTN TOP */
+    .btn-top {
+      position: fixed; bottom: 36px; right: 36px; z-index: 9998;
+      width: 42px; height: 42px; background: var(--black);
+      border: 1px solid rgba(229,9,20,0.5); color: var(--red);
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; opacity: 0; transform: translateY(16px);
+      transition: opacity .3s, transform .3s, background .25s, box-shadow .25s;
+      text-decoration: none; pointer-events: none;
+      font-family: var(--mono); font-size: 1rem;
+    }
+    .btn-top.show { opacity: 1; transform: translateY(0); pointer-events: all; }
+    .btn-top:hover { background: var(--red); color: var(--white); box-shadow: 0 0 18px var(--red-glow); }
+
+    /* HERO */
+    .hero {
+      position: relative; height: 100vh; min-height: 640px;
+      display: flex; align-items: center; justify-content: center;
+      overflow: hidden; background: var(--black);
+    }
+
+    #polyCanvas {
+      position: absolute; inset: 0; width: 100%; height: 100%;
+      pointer-events: none; z-index: 1;
+    }
+
+    .hero-left-mask {
+      position: absolute; inset: 0;
+      background:
+        radial-gradient(ellipse 70% 55% at 50% 42%, rgba(6,6,8,0.0) 0%, rgba(6,6,8,0.72) 65%, rgba(6,6,8,0.98) 100%),
+        linear-gradient(to bottom, rgba(6,6,8,0.92) 0%, rgba(6,6,8,0.08) 35%, rgba(6,6,8,0.08) 62%, rgba(6,6,8,0.96) 100%);
+      z-index: 2; pointer-events: none;
+    }
+
+    .scanlines {
+      position: absolute; inset: 0;
+      background: repeating-linear-gradient(
+        to bottom, transparent 0, transparent 3px,
+        rgba(0,0,0,0.05) 3px, rgba(0,0,0,0.05) 4px
+      );
+      pointer-events: none; z-index: 3; opacity: 0.45;
+    }
+
+    /* Marco animado */
+    .frame { position: absolute; inset: 22px; pointer-events: none; z-index: 6; }
+    .frame-t,.frame-b,.frame-l,.frame-r { position: absolute; background: var(--red); opacity: 0; }
+    .frame-t { top:0;left:0;height:1px;width:0; animation:drawH 1s .4s cubic-bezier(.77,0,.18,1) forwards; }
+    .frame-b { bottom:0;right:0;height:1px;width:0; animation:drawH 1s .8s cubic-bezier(.77,0,.18,1) forwards; }
+    .frame-l { top:0;left:0;width:1px;height:0; animation:drawV 1s .6s cubic-bezier(.77,0,.18,1) forwards; }
+    .frame-r { bottom:0;right:0;width:1px;height:0; animation:drawV 1s 1.0s cubic-bezier(.77,0,.18,1) forwards; }
+    .frame::before,.frame::after,.frame-inner::before,.frame-inner::after {
+      content:''; position:absolute; width:16px; height:16px;
+      border-color:var(--red); border-style:solid;
+      opacity:0; animation:cornerPop .35s 1.35s ease forwards;
+    }
+    .frame::before  { top:-1px;left:-1px;  border-width:2px 0 0 2px; }
+    .frame::after   { top:-1px;right:-1px; border-width:2px 2px 0 0; }
+    .frame-inner::before { bottom:-1px;left:-1px; border-width:0 0 2px 2px; }
+    .frame-inner::after  { bottom:-1px;right:-1px;border-width:0 2px 2px 0; }
+
+    @keyframes drawH { from{width:0;opacity:.5;} to{width:100%;opacity:.5;} }
+    @keyframes drawV { from{height:0;opacity:.5;} to{height:100%;opacity:.5;} }
+    @keyframes cornerPop { from{opacity:0;transform:scale(.3);} to{opacity:1;transform:scale(1);} }
+
+    /* Topbar */
+    .hero-topbar {
+      position:absolute; top:22px; left:22px; right:22px; height:32px;
+      border-bottom:1px solid rgba(229,9,20,.25);
+      display:flex; align-items:center; padding:0 18px; gap:24px;
+      z-index:7; opacity:0; animation:fadeIn .5s 1.4s ease forwards;
+    }
+    .hero-topbar span { font-family:var(--mono); font-size:.5rem; letter-spacing:.2em; color:rgba(229,9,20,.5); text-transform:uppercase; }
+    .hero-topbar .fill { flex:1; }
+    .status-dot {
+      display:inline-block; width:5px; height:5px; border-radius:50%;
+      background:var(--red); margin-right:6px;
+      animation:blink 2s step-end infinite; box-shadow:0 0 6px var(--red);
+    }
+    @keyframes blink { 0%,100%{opacity:1;} 50%{opacity:0;} }
+
+    /* Btn volver */
+    .btn-back {
+      position:absolute; top:60px; left:42px; z-index:10;
+      display:inline-flex; align-items:center; gap:9px;
+      padding:7px 18px 7px 12px;
+      border:1px solid rgba(229,9,20,.45); color:rgba(229,9,20,.85);
+      font-family:var(--mono); font-size:.58rem; letter-spacing:.18em;
+      text-transform:uppercase; text-decoration:none; overflow:hidden;
+      opacity:0; animation:fadeIn .5s 1.6s ease forwards;
+      transition:color .25s,border-color .25s,box-shadow .25s;
+      background:rgba(6,6,8,.85);
+    }
+    .btn-back::before { content:''; position:absolute; inset:0; background:var(--red); transform:translateX(-101%); transition:transform .28s ease; }
+    .btn-back:hover { color:var(--white); border-color:var(--red); box-shadow:0 0 14px var(--red-glow); }
+    .btn-back:hover::before { transform:translateX(0); }
+    .btn-back-arrow,.btn-back-label { position:relative; z-index:1; }
+    .btn-back-arrow { transition:transform .25s; }
+    .btn-back:hover .btn-back-arrow { transform:translateX(-3px); }
+
+    /* HUD */
+    .hud { position:absolute; z-index:7; font-family:var(--mono); font-size:.5rem; letter-spacing:.14em; color:rgba(229,9,20,.42); text-transform:uppercase; opacity:0; animation:fadeIn .5s 1.8s ease forwards; }
+    .hud span { display:block; line-height:1.9; }
+    .hud-br { bottom:42px; right:42px; text-align:right; }
+
+    /* Hero content */
+    .hero-content { position:relative; z-index:5; padding: 0 5vw; max-width: 820px; text-align:center; }
+
+    .hero-eyebrow {
+      font-family:var(--mono); font-size:.62rem; letter-spacing:.32em;
+      color:rgba(229,9,20,.75); text-transform:uppercase; margin-bottom:16px;
+      opacity:0; animation:fadeUp .7s 1.0s ease forwards;
+    }
+
+    .hero-title {
+      font-family:var(--display);
+      font-size:clamp(3.5rem, 10vw, 9rem);
+      line-height:.88; letter-spacing:.03em; color:var(--white);
+      text-shadow:0 0 40px rgba(229,9,20,.2), 0 2px 0 rgba(0,0,0,.9);
+      opacity:0; animation:fadeUp 1s 1.2s ease forwards;
+    }
+    .hero-title .accent { color:var(--red); display:block; text-shadow:0 0 40px rgba(229,9,20,.6),0 0 80px rgba(229,9,20,.2); }
+
+    .hero-divider {
+      display:flex; align-items:center; gap:14px; margin:20px 0 18px;
+      opacity:0; animation:fadeUp .6s 1.5s ease forwards;
+    }
+    .hero-divider-line { width:56px; height:1px; background:linear-gradient(to right,transparent,rgba(229,9,20,.65)); }
+    .hero-divider-line:last-child { transform:scaleX(-1); }
+    .hero-divider-diamond { width:6px; height:6px; background:var(--red); transform:rotate(45deg); box-shadow:0 0 10px var(--red); }
+
+    .hero-sub {
+      font-family:var(--mono); font-size:.6rem; letter-spacing:.2em;
+      color:rgba(238,238,238,.38); text-transform:uppercase; margin-bottom:22px;
+      opacity:0; animation:fadeUp .6s 1.7s ease forwards;
+    }
+
+    /* ======= ÍNDICE EN PORTADA ======= */
+    .hero-navtags {
+      display:flex; flex-wrap:wrap; gap:8px;
+      opacity:0; animation:fadeUp .7s 1.9s ease forwards;
+    }
+    .hero-navtag {
+      font-family:var(--mono); font-size:.54rem; letter-spacing:.12em;
+      text-transform:uppercase; padding:5px 14px;
+      border:1px solid rgba(229,9,20,.4); color:rgba(238,238,238,.7);
+      background:rgba(6,6,8,.88); text-decoration:none;
+      position:relative; overflow:hidden;
+      transition:color .25s,border-color .25s,box-shadow .25s;
+    }
+    .hero-navtag::before { content:''; position:absolute; left:0; top:0; bottom:0; width:2px; background:var(--red); }
+    .hero-navtag:hover { color:var(--white); border-color:var(--red); box-shadow:0 0 10px rgba(229,9,20,.18); }
+
+    /* Scroll cue */
+    .scroll-cue {
+      position:absolute; bottom:42px; left:5vw; z-index:7;
+      display:flex; align-items:center; gap:12px;
+      font-family:var(--mono); font-size:.5rem; letter-spacing:.25em;
+      color:rgba(238,238,238,.18); text-transform:uppercase;
+      opacity:0; animation:fadeIn .5s 2.4s ease forwards;
+    }
+    .scroll-line-cue { width:36px; height:1px; background:linear-gradient(to right,var(--red),transparent); animation:scrollPulse 2s ease-in-out infinite; }
+    @keyframes scrollPulse { 0%,100%{opacity:1;width:36px;} 50%{opacity:.3;width:18px;} }
+
+    /* LAYOUT */
+    .layout { display:grid; grid-template-columns:210px 1fr; background:var(--black); }
+
+    .sidebar {
+      position:sticky; top:0; height:100vh;
+      overflow-y:auto; background:var(--black);
+      border-right:1px solid var(--grey);
+      padding:28px 0; scrollbar-width:none;
+    }
+    .sidebar::-webkit-scrollbar { display:none; }
+
+    .sidebar-header { padding:0 18px 18px; border-bottom:1px solid var(--grey); margin-bottom:10px; }
+    .sidebar-tag { font-family:var(--mono); font-size:.48rem; letter-spacing:.28em; color:var(--red); text-transform:uppercase; margin-bottom:6px; }
+    .sidebar-name { font-family:var(--display); font-size:.95rem; letter-spacing:.08em; color:var(--white); line-height:1.25; }
+
+    .nav-group { margin-bottom:2px; }
+    .nav-group-label { font-family:var(--mono); font-size:.44rem; letter-spacing:.28em; color:rgba(229,9,20,.36); text-transform:uppercase; padding:9px 18px 3px; display:block; }
+    .nav-link {
+      display:flex; align-items:center; gap:7px; padding:6px 18px;
+      font-family:var(--mono); font-size:.56rem; letter-spacing:.06em;
+      color:rgba(238,238,238,.32); text-decoration:none;
+      border-left:2px solid transparent;
+      transition:color .2s,background .2s,padding-left .2s,border-color .2s;
+    }
+    .nav-link:hover,.nav-link.active { color:var(--white); background:rgba(229,9,20,.06); border-left-color:var(--red); padding-left:24px; }
+    .nav-num { font-size:.4rem; color:rgba(229,9,20,.36); min-width:14px; }
+
+    /* PAGE */
+    .page { padding:0 5vw 130px; min-width:0; }
+    .section { padding-top:80px; }
+
+    .sec-id {
+      font-family:var(--mono); font-size:.58rem; letter-spacing:.3em;
+      color:var(--red); text-transform:uppercase;
+      display:flex; align-items:center; gap:14px; margin-bottom:10px;
+    }
+    .sec-id::after { content:''; flex:1; height:1px; background:linear-gradient(to right,rgba(229,9,20,.4),transparent); }
+
+    .sec-title { font-family:var(--display); font-size:clamp(1.8rem,5vw,3rem); letter-spacing:.05em; color:var(--white); margin-bottom:32px; line-height:1; }
+
+    .prose p { font-size:.97rem; font-weight:300; color:var(--muted); line-height:1.85; margin-bottom:20px; }
+    .prose p strong { color:var(--white); font-weight:600; }
+    .prose p em { font-style:normal; color:var(--red); }
+    .prose p code { font-family:var(--mono); font-size:.8rem; background:var(--panel); border:1px solid var(--grey-lt); padding:1px 6px; color:rgba(229,9,20,.9); }
+
+    .def-box { border-left:2px solid var(--red); background:var(--panel); padding:18px 22px; margin:0 0 28px; }
+    .def-box p { font-size:.97rem; font-weight:300; color:var(--muted); line-height:1.85; margin:0; }
+    .def-box p strong { color:var(--white); }
+    .def-box p em { font-style:normal; color:var(--red); }
+    .def-box p code { font-family:var(--mono); font-size:.8rem; background:rgba(229,9,20,.08); padding:1px 5px; color:rgba(229,9,20,.9); }
+
+    .prop-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:14px; margin:26px 0; }
+    .prop-card { background:var(--panel); border:1px solid var(--grey); padding:18px; position:relative; overflow:hidden; transition:border-color .3s,transform .3s; }
+    .prop-card:hover { border-color:rgba(229,9,20,.35); transform:translateY(-2px); }
+    .prop-card::before { content:''; position:absolute; top:0; left:0; right:0; height:2px; background:var(--red); transform:scaleX(0); transform-origin:left; transition:transform .3s; }
+    .prop-card:hover::before { transform:scaleX(1); }
+    .prop-name { font-family:var(--mono); font-size:.78rem; color:var(--red); margin-bottom:6px; }
+    .prop-desc { font-size:.85rem; font-weight:300; color:var(--muted); line-height:1.6; }
+    .prop-ex { font-family:var(--mono); font-size:.67rem; background:rgba(229,9,20,.05); border:1px solid rgba(229,9,20,.14); padding:5px 9px; margin-top:9px; color:rgba(238,238,238,.5); }
+
+    .codeblock { background:#08080c; border:1px solid var(--grey); overflow-x:auto; margin:22px 0; }
+    .codeblock-top { background:var(--panel); border-bottom:1px solid var(--grey); padding:8px 16px; display:flex; align-items:center; gap:7px; }
+    .cd { width:9px; height:9px; border-radius:50%; }
+    .cd-r{background:#e50914;} .cd-y{background:#e3b341;} .cd-g{background:#3ddc84;}
+    .codeblock-fname { font-family:var(--mono); font-size:.55rem; color:rgba(238,238,238,.3); margin-left:8px; }
+    .codeblock pre { padding:20px 0; font-family:var(--mono); font-size:.74rem; line-height:1.8; white-space:pre; }
+    .cl { display:flex; }
+    .ln { min-width:44px; padding:0 16px; text-align:right; color:#252530; font-size:.7rem; line-height:1.8; user-select:none; }
+    .lc { flex:1; padding-right:16px; }
+
+    .kw{color:#e50914;} .fn{color:#ff6b6b;} .st{color:#a5d6a7;} .cm{color:#546e7a;font-style:italic;} .nm{color:#ffcc80;} .bi{color:#79c0ff;}
+
+    .infobox { border-left:2px solid var(--red); background:var(--panel); padding:16px 20px; margin:22px 0; }
+    .infobox p { font-size:.88rem; color:var(--muted); line-height:1.7; margin:0; }
+    .infobox p strong { color:var(--white); }
+    .infobox p code { font-family:var(--mono); font-size:.8rem; color:rgba(229,9,20,.9); }
+
+    .pull-quote { border-left:2px solid var(--red); padding:4px 0 4px 20px; margin:28px 0; font-family:var(--display); font-size:clamp(1.1rem,3vw,1.5rem); letter-spacing:.04em; color:rgba(238,238,238,.7); line-height:1.25; }
+
+    .tip { background:rgba(229,9,20,.04); border:1px solid rgba(229,9,20,.2); padding:14px 18px; margin:18px 0; display:flex; gap:14px; align-items:flex-start; }
+    .tip-icon { font-family:var(--mono); font-size:.58rem; color:var(--red); min-width:22px; padding-top:2px; }
+    .tip-text { font-size:.88rem; font-weight:300; color:var(--muted); line-height:1.65; }
+    .tip-text strong { color:var(--white); }
+    .tip-text code { font-family:var(--mono); font-size:.78rem; color:rgba(229,9,20,.9); }
+
+    .reveal { opacity:0; transform:translateY(24px); transition:opacity .6s ease,transform .6s ease; }
+    .reveal.visible { opacity:1; transform:none; }
+
+    .site-footer { border-top:1px solid var(--grey); padding:36px 5vw; text-align:center; }
+    .site-footer p { font-family:var(--mono); font-size:.58rem; letter-spacing:.22em; color:rgba(238,238,238,.12); text-transform:uppercase; }
+    .site-footer span { color:var(--red); }
+
+    @keyframes fadeUp { from{opacity:0;transform:translateY(22px);} to{opacity:1;transform:translateY(0);} }
+    @keyframes fadeIn { from{opacity:0;} to{opacity:1;} }
+
+    @media(max-width:860px) {
+      .layout { grid-template-columns:1fr; }
+      .sidebar { display:none; }
+      .btn-top { bottom:20px; right:20px; }
+      .hud { display:none; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="reading-bar" id="readingBar"></div>
+<a href="#" class="btn-top" id="btnTop">↑</a>
+
+<!-- HERO -->
+<header class="hero">
+  <canvas id="polyCanvas"></canvas>
+  <div class="hero-left-mask"></div>
+  <div class="scanlines"></div>
+
+  <div class="frame">
+    <div class="frame-t"></div><div class="frame-b"></div>
+    <div class="frame-l"></div><div class="frame-r"></div>
+    <div class="frame-inner"></div>
+  </div>
+
+  <div class="hero-topbar">
+    <span><span class="status-dot"></span>ACTIVO</span>
+    <span>TAREA.06 // CONCEPTOS DE PYTHON</span>
+    <span class="fill"></span>
+    <span>CULTURA DIGITAL II · 2026</span>
+  </div>
+
+  <a href="index.html" class="btn-back">
+    <span class="btn-back-arrow">←</span>
+    <span class="btn-back-label">Volver al Portafolio</span>
+  </a>
+
+  <div class="hud hud-br">
+    <span>CBTIS 144</span>
+    <span>SEGUNDO SEMESTRE</span>
+    <span>INTELIGENCIA ARTIFICIAL</span>
+    <span>BY: PAULA ESTRADA ALEGRIA</span>
+  </div>
+
+  <div class="hero-content">
+    <p class="hero-eyebrow">// 10 conceptos esenciales para aprender Python</p>
+    <h1 class="hero-title">
+      CONCEPTOS GENERALES<br>
+      <span class="accent">DE PYTHON</span>
+    </h1>
+    <div class="hero-divider">
+      <div class="hero-divider-line"></div>
+      <div class="hero-divider-diamond"></div>
+      <div class="hero-divider-line"></div>
+    </div>
+    <p class="hero-sub">GUÍA COMPLETA · FUNDAMENTOS DEL LENGUAJE · TAREA 06</p>
+
+    <!-- ÍNDICE COMO TAGS EN LA PORTADA -->
+    <div class="hero-navtags" style="justify-content:center;">
+      <a href="#variables"    class="hero-navtag">01 Variables</a>
+      <a href="#tipos"        class="hero-navtag">02 Tipos de Datos</a>
+      <a href="#operadores"   class="hero-navtag">03 Operadores</a>
+      <a href="#condicionales"class="hero-navtag">04 Condicionales</a>
+      <a href="#bucles"       class="hero-navtag">05 Bucles</a>
+      <a href="#funciones"    class="hero-navtag">06 Funciones</a>
+      <a href="#listas"       class="hero-navtag">07 Listas y Tuplas</a>
+      <a href="#diccionarios" class="hero-navtag">08 Diccionarios</a>
+      <a href="#clases"       class="hero-navtag">09 Clases y POO</a>
+      <a href="#modulos"      class="hero-navtag">10 Módulos</a>
+    </div>
+  </div>
+
+  <div class="scroll-cue">
+    <div class="scroll-line-cue"></div>
+    DESPLAZA PARA CONTINUAR
+  </div>
+</header>
+
+<!-- LAYOUT -->
+<div class="layout">
+
+  <!-- SIDEBAR -->
+  <nav class="sidebar">
+    <div class="sidebar-header">
+      <p class="sidebar-tag">// Tarea 06</p>
+      <p class="sidebar-name">Conceptos<br>de Python</p>
+    </div>
+
+    <div class="nav-group">
+      <span class="nav-group-label">Básico</span>
+      <a href="#variables"    class="nav-link"><span class="nav-num">01</span> Variables</a>
+      <a href="#tipos"        class="nav-link"><span class="nav-num">02</span> Tipos de Datos</a>
+      <a href="#operadores"   class="nav-link"><span class="nav-num">03</span> Operadores</a>
+    </div>
+    <div class="nav-group">
+      <span class="nav-group-label">Control de Flujo</span>
+      <a href="#condicionales"class="nav-link"><span class="nav-num">04</span> Condicionales</a>
+      <a href="#bucles"       class="nav-link"><span class="nav-num">05</span> Bucles</a>
+      <a href="#funciones"    class="nav-link"><span class="nav-num">06</span> Funciones</a>
+    </div>
+    <div class="nav-group">
+      <span class="nav-group-label">Estructuras</span>
+      <a href="#listas"       class="nav-link"><span class="nav-num">07</span> Listas y Tuplas</a>
+      <a href="#diccionarios" class="nav-link"><span class="nav-num">08</span> Diccionarios</a>
+    </div>
+    <div class="nav-group">
+      <span class="nav-group-label">Avanzado</span>
+      <a href="#clases"       class="nav-link"><span class="nav-num">09</span> Clases y POO</a>
+      <a href="#modulos"      class="nav-link"><span class="nav-num">10</span> Módulos</a>
+    </div>
+  </nav>
+
+  <!-- CONTENIDO -->
+  <main class="page">
+
+    <!-- 01 VARIABLES -->
+    <section id="variables" class="section">
+      <div class="reveal">
+        <p class="sec-id">// 01 · Básico</p>
+        <h2 class="sec-title">Variables</h2>
+      </div>
+      <div class="def-box reveal">
+        <p>Una <strong>variable</strong> es un espacio con nombre en la memoria del computador que almacena un valor. En Python no se declara el tipo explícitamente; el intérprete lo infiere automáticamente al momento de la asignación. Son el bloque fundamental de cualquier programa: sin variables no hay datos, sin datos no hay programa.</p>
+      </div>
+      <div class="prop-grid reveal">
+        <div class="prop-card">
+          <p class="prop-name">Tipado dinámico</p>
+          <p class="prop-desc">Python determina el tipo en tiempo de ejecución, no al declarar. Una misma variable puede cambiar de tipo durante la ejecución sin errores.</p>
+        </div>
+        <div class="prop-card">
+          <p class="prop-name">Asignación con =</p>
+          <p class="prop-desc">No se necesitan palabras clave como <code>var</code> o <code>int</code>. Basta escribir <code>nombre = valor</code> para crear y asignar en una sola operación.</p>
+        </div>
+        <div class="prop-card">
+          <p class="prop-name">Nombres válidos</p>
+          <p class="prop-desc">Deben empezar con letra o guión bajo <code>_</code>. No pueden comenzar con número ni contener espacios. Son sensibles a mayúsculas: <code>Edad</code> ≠ <code>edad</code>.</p>
+        </div>
+        <div class="prop-card">
+          <p class="prop-name">Asignación múltiple</p>
+          <p class="prop-desc">Python permite asignar varias variables en una sola línea: <code>a, b, c = 1, 2, 3</code> o dar el mismo valor: <code>x = y = 0</code>.</p>
+        </div>
+      </div>
+      <div class="codeblock reveal">
+        <div class="codeblock-top">
+          <div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div>
+          <span class="codeblock-fname">variables.py</span>
+        </div>
+        <pre>
+<div class="cl"><span class="ln">1</span><span class="lc"><span class="cm"># Declaración de variables</span></span></div>
+<div class="cl"><span class="ln">2</span><span class="lc">nombre   = <span class="st">"Paula"</span>       <span class="cm"># str</span></span></div>
+<div class="cl"><span class="ln">3</span><span class="lc">edad     = <span class="nm">17</span>             <span class="cm"># int</span></span></div>
+<div class="cl"><span class="ln">4</span><span class="lc">promedio = <span class="nm">9.8</span>           <span class="cm"># float</span></span></div>
+<div class="cl"><span class="ln">5</span><span class="lc">activo   = <span class="kw">True</span>          <span class="cm"># bool</span></span></div>
+<div class="cl"><span class="ln">6</span><span class="lc"></span></div>
+<div class="cl"><span class="ln">7</span><span class="lc"><span class="cm"># Asignación múltiple</span></span></div>
+<div class="cl"><span class="ln">8</span><span class="lc">x, y, z = <span class="nm">1</span>, <span class="nm">2</span>, <span class="nm">3</span></span></div>
+<div class="cl"><span class="ln">9</span><span class="lc"><span class="bi">print</span>(nombre, edad)      <span class="cm"># Paula 17</span></span></div></pre>
+      </div>
+      <div class="tip reveal">
+        <span class="tip-icon">!</span>
+        <p class="tip-text">Por convención Python usa <strong>snake_case</strong> para variables (<code>nombre_completo</code>). Las constantes se escriben en MAYÚSCULAS: <code>PI = 3.14159</code>.</p>
+      </div>
+    </section>
+
+    <!-- 02 TIPOS DE DATOS -->
+    <section id="tipos" class="section">
+      <div class="reveal">
+        <p class="sec-id">// 02 · Básico</p>
+        <h2 class="sec-title">Tipos de Datos</h2>
+      </div>
+      <div class="def-box reveal">
+        <p>Los <strong>tipos de datos</strong> definen la clase de valor que puede guardar una variable y qué operaciones son posibles sobre ella. Python incluye tipos primitivos integrados. La función <code>type()</code> permite conocer el tipo de cualquier valor en tiempo de ejecución, y funciones como <code>int()</code>, <code>str()</code> o <code>float()</code> permiten convertir entre tipos.</p>
+      </div>
+      <div class="prop-grid reveal">
+        <div class="prop-card">
+          <p class="prop-name">int</p>
+          <p class="prop-desc">Números enteros sin parte decimal: positivos, negativos o cero. Sin límite de tamaño en Python 3.</p>
+          <p class="prop-ex">edad = 17 &nbsp;|&nbsp; temp = -5 &nbsp;|&nbsp; cero = 0</p>
+        </div>
+        <div class="prop-card">
+          <p class="prop-name">float</p>
+          <p class="prop-desc">Números con parte decimal (punto flotante). Usado para cálculos científicos o valores con precisión decimal.</p>
+          <p class="prop-ex">pi = 3.14159 &nbsp;|&nbsp; peso = 52.5</p>
+        </div>
+        <div class="prop-card">
+          <p class="prop-name">str</p>
+          <p class="prop-desc">Cadenas de texto entre comillas simples o dobles. Soportan concatenación, slicing e interpolación con f-strings.</p>
+          <p class="prop-ex">nombre = "Paula" &nbsp;|&nbsp; ciudad = 'GDL'</p>
+        </div>
+        <div class="prop-card">
+          <p class="prop-name">bool</p>
+          <p class="prop-desc">Solo dos valores: <code>True</code> o <code>False</code>. Son la base del control de flujo y las condiciones.</p>
+          <p class="prop-ex">activo = True &nbsp;|&nbsp; error = False</p>
+        </div>
+        <div class="prop-card">
+          <p class="prop-name">NoneType</p>
+          <p class="prop-desc">Representa la ausencia de valor con la palabra clave <code>None</code>. Equivale al nulo de otros lenguajes.</p>
+          <p class="prop-ex">resultado = None</p>
+        </div>
+        <div class="prop-card">
+          <p class="prop-name">Conversión de tipos</p>
+          <p class="prop-desc">Funciones integradas para cambiar de tipo: <code>int()</code>, <code>float()</code>, <code>str()</code>, <code>bool()</code>. Pueden generar error si el valor no es compatible.</p>
+          <p class="prop-ex">int("42") → 42 &nbsp;|&nbsp; str(17) → "17"</p>
+        </div>
+      </div>
+      <div class="codeblock reveal">
+        <div class="codeblock-top">
+          <div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div>
+          <span class="codeblock-fname">tipos.py</span>
+        </div>
+        <pre>
+<div class="cl"><span class="ln">1</span><span class="lc"><span class="bi">print</span>(<span class="bi">type</span>(<span class="nm">42</span>))       <span class="cm"># &lt;class 'int'&gt;</span></span></div>
+<div class="cl"><span class="ln">2</span><span class="lc"><span class="bi">print</span>(<span class="bi">type</span>(<span class="nm">3.14</span>))     <span class="cm"># &lt;class 'float'&gt;</span></span></div>
+<div class="cl"><span class="ln">3</span><span class="lc"><span class="bi">print</span>(<span class="bi">type</span>(<span class="st">"Hola"</span>))   <span class="cm"># &lt;class 'str'&gt;</span></span></div>
+<div class="cl"><span class="ln">4</span><span class="lc"><span class="bi">print</span>(<span class="bi">type</span>(<span class="kw">True</span>))     <span class="cm"># &lt;class 'bool'&gt;</span></span></div>
+<div class="cl"><span class="ln">5</span><span class="lc"><span class="bi">print</span>(<span class="bi">type</span>(<span class="kw">None</span>))     <span class="cm"># &lt;class 'NoneType'&gt;</span></span></div>
+<div class="cl"><span class="ln">6</span><span class="lc">numero = <span class="bi">int</span>(<span class="st">"100"</span>)    <span class="cm"># "100" → 100</span></span></div>
+<div class="cl"><span class="ln">7</span><span class="lc">texto  = <span class="bi">str</span>(<span class="nm">3.14</span>)    <span class="cm"># 3.14 → "3.14"</span></span></div></pre>
+      </div>
+    </section>
+
+    <!-- 03 OPERADORES -->
+    <section id="operadores" class="section">
+      <div class="reveal">
+        <p class="sec-id">// 03 · Básico</p>
+        <h2 class="sec-title">Operadores</h2>
+      </div>
+      <div class="def-box reveal">
+        <p>Los <strong>operadores</strong> son símbolos especiales que indican al intérprete realizar una operación entre uno o más valores llamados <em>operandos</em>. Python cuenta con operadores aritméticos, de comparación, lógicos y de asignación. Son el mecanismo principal para calcular, comparar y decidir dentro de un programa.</p>
+      </div>
+      <div class="prop-grid reveal">
+        <div class="prop-card">
+          <p class="prop-name">Aritméticos</p>
+          <p class="prop-desc"><code>+</code> suma · <code>-</code> resta · <code>*</code> multiplicación · <code>/</code> división · <code>%</code> módulo (resto) · <code>**</code> potencia · <code>//</code> división entera.</p>
+        </div>
+        <div class="prop-card">
+          <p class="prop-name">Comparación</p>
+          <p class="prop-desc"><code>==</code> igual · <code>!=</code> diferente · <code>&gt;</code> mayor · <code>&lt;</code> menor · <code>&gt;=</code> mayor/igual · <code>&lt;=</code> menor/igual. Siempre retornan <code>True</code> o <code>False</code>.</p>
+        </div>
+        <div class="prop-card">
+          <p class="prop-name">Lógicos</p>
+          <p class="prop-desc"><code>and</code> (ambas verdaderas) · <code>or</code> (al menos una verdadera) · <code>not</code> (niega la condición). Trabajan sobre valores booleanos.</p>
+        </div>
+        <div class="prop-card">
+          <p class="prop-name">Asignación compuesta</p>
+          <p class="prop-desc"><code>+=</code> · <code>-=</code> · <code>*=</code> · <code>/=</code> · <code>**=</code>. Combinan la operación con la asignación: <code>a += 5</code> equivale a <code>a = a + 5</code>.</p>
+        </div>
+      </div>
+      <div class="codeblock reveal">
+        <div class="codeblock-top">
+          <div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div>
+          <span class="codeblock-fname">operadores.py</span>
+        </div>
+        <pre>
+<div class="cl"><span class="ln">1</span><span class="lc">a, b = <span class="nm">10</span>, <span class="nm">3</span></span></div>
+<div class="cl"><span class="ln">2</span><span class="lc"><span class="bi">print</span>(a + b)      <span class="cm"># 13</span></span></div>
+<div class="cl"><span class="ln">3</span><span class="lc"><span class="bi">print</span>(a ** b)     <span class="cm"># 1000  (potencia)</span></span></div>
+<div class="cl"><span class="ln">4</span><span class="lc"><span class="bi">print</span>(a % b)      <span class="cm"># 1     (módulo)</span></span></div>
+<div class="cl"><span class="ln">5</span><span class="lc"><span class="bi">print</span>(a // b)     <span class="cm"># 3     (división entera)</span></span></div>
+<div class="cl"><span class="ln">6</span><span class="lc"><span class="bi">print</span>(a > b)      <span class="cm"># True</span></span></div>
+<div class="cl"><span class="ln">7</span><span class="lc"><span class="bi">print</span>(a == <span class="nm">10</span> <span class="kw">and</span> b < <span class="nm">5</span>)  <span class="cm"># True</span></span></div>
+<div class="cl"><span class="ln">8</span><span class="lc">a += <span class="nm">5</span>             <span class="cm"># a ahora vale 15</span></span></div></pre>
+      </div>
+    </section>
+
+    <!-- 04 CONDICIONALES -->
+    <section id="condicionales" class="section">
+      <div class="reveal">
+        <p class="sec-id">// 04 · Control de Flujo</p>
+        <h2 class="sec-title">Condicionales</h2>
+      </div>
+      <div class="def-box reveal">
+        <p>Las <strong>estructuras condicionales</strong> permiten que el programa tome decisiones: ejecutan un bloque de código si una condición es verdadera y otro bloque diferente si es falsa. En Python se usan <em>if</em>, <em>elif</em> y <em>else</em>. La <strong>indentación</strong> (4 espacios) delimita los bloques — no se usan llaves como en otros lenguajes.</p>
+      </div>
+      <div class="prop-grid reveal">
+        <div class="prop-card">
+          <p class="prop-name">if</p>
+          <p class="prop-desc">Evalúa la condición. Si es <code>True</code> ejecuta el bloque indentado debajo. Si es <code>False</code>, lo salta por completo.</p>
+        </div>
+        <div class="prop-card">
+          <p class="prop-name">elif</p>
+          <p class="prop-desc">"else if": evalúa una segunda condición si la anterior fue falsa. Se pueden encadenar múltiples <code>elif</code> consecutivos.</p>
+        </div>
+        <div class="prop-card">
+          <p class="prop-name">else</p>
+          <p class="prop-desc">Se ejecuta cuando ninguna condición anterior fue verdadera. Es el caso por defecto y es opcional.</p>
+        </div>
+        <div class="prop-card">
+          <p class="prop-name">Indentación obligatoria</p>
+          <p class="prop-desc">Python usa 4 espacios para delimitar bloques. Es sintaxis, no estilo. Un bloque mal indentado genera un <code>IndentationError</code>.</p>
+        </div>
+      </div>
+      <div class="codeblock reveal">
+        <div class="codeblock-top">
+          <div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div>
+          <span class="codeblock-fname">condicionales.py</span>
+        </div>
+        <pre>
+<div class="cl"><span class="ln">1</span><span class="lc">nota = <span class="nm">8.5</span></span></div>
+<div class="cl"><span class="ln">2</span><span class="lc"></span></div>
+<div class="cl"><span class="ln">3</span><span class="lc"><span class="kw">if</span> nota >= <span class="nm">9</span>:</span></div>
+<div class="cl"><span class="ln">4</span><span class="lc">    <span class="bi">print</span>(<span class="st">"Excelente"</span>)</span></div>
+<div class="cl"><span class="ln">5</span><span class="lc"><span class="kw">elif</span> nota >= <span class="nm">7</span>:</span></div>
+<div class="cl"><span class="ln">6</span><span class="lc">    <span class="bi">print</span>(<span class="st">"Aprobado"</span>)     <span class="cm"># ← se ejecuta este</span></span></div>
+<div class="cl"><span class="ln">7</span><span class="lc"><span class="kw">else</span>:</span></div>
+<div class="cl"><span class="ln">8</span><span class="lc">    <span class="bi">print</span>(<span class="st">"Reprobado"</span>)</span></div></pre>
+      </div>
+      <div class="pull-quote reveal">"La indentación no es estilo en Python — es sintaxis. Un bloque mal indentado genera un error."</div>
+    </section>
+
+    <!-- 05 BUCLES -->
+    <section id="bucles" class="section">
+      <div class="reveal">
+        <p class="sec-id">// 05 · Control de Flujo</p>
+        <h2 class="sec-title">Bucles</h2>
+      </div>
+      <div class="def-box reveal">
+        <p>Los <strong>bucles</strong> permiten repetir un bloque de código múltiples veces sin escribirlo manualmente. Python ofrece dos tipos: <em>for</em> para iterar sobre una secuencia y <em>while</em> para repetir mientras se cumpla una condición. Son la base de la automatización y el procesamiento de colecciones de datos.</p>
+      </div>
+      <div class="prop-grid reveal">
+        <div class="prop-card">
+          <p class="prop-name">for</p>
+          <p class="prop-desc">Itera sobre los elementos de cualquier secuencia: lista, cadena, rango, tupla, diccionario. Ideal cuando se conoce el número de repeticiones.</p>
+        </div>
+        <div class="prop-card">
+          <p class="prop-name">while</p>
+          <p class="prop-desc">Repite el bloque mientras la condición sea <code>True</code>. Útil cuando el número de iteraciones no se conoce de antemano.</p>
+        </div>
+        <div class="prop-card">
+          <p class="prop-name">range()</p>
+          <p class="prop-desc">Genera una secuencia de números. <code>range(5)</code> → 0 a 4. <code>range(1,10,2)</code> → 1,3,5,7,9. Muy usada con <code>for</code>.</p>
+        </div>
+        <div class="prop-card">
+          <p class="prop-name">break / continue</p>
+          <p class="prop-desc"><code>break</code> termina el bucle inmediatamente. <code>continue</code> salta a la siguiente iteración sin ejecutar el resto del bloque actual.</p>
+        </div>
+      </div>
+      <div class="codeblock reveal">
+        <div class="codeblock-top">
+          <div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div>
+          <span class="codeblock-fname">bucles.py</span>
+        </div>
+        <pre>
+<div class="cl"><span class="ln">1</span><span class="lc"><span class="cm"># Bucle for con range</span></span></div>
+<div class="cl"><span class="ln">2</span><span class="lc"><span class="kw">for</span> i <span class="kw">in</span> <span class="bi">range</span>(<span class="nm">1</span>, <span class="nm">4</span>):</span></div>
+<div class="cl"><span class="ln">3</span><span class="lc">    <span class="bi">print</span>(<span class="st">f"Vuelta {i}"</span>)</span></div>
+<div class="cl"><span class="ln">4</span><span class="lc"><span class="cm"># Vuelta 1 / Vuelta 2 / Vuelta 3</span></span></div>
+<div class="cl"><span class="ln">5</span><span class="lc"></span></div>
+<div class="cl"><span class="ln">6</span><span class="lc"><span class="cm"># Bucle while</span></span></div>
+<div class="cl"><span class="ln">7</span><span class="lc">contador = <span class="nm">0</span></span></div>
+<div class="cl"><span class="ln">8</span><span class="lc"><span class="kw">while</span> contador < <span class="nm">3</span>:</span></div>
+<div class="cl"><span class="ln">9</span><span class="lc">    contador += <span class="nm">1</span></span></div>
+<div class="cl"><span class="ln">10</span><span class="lc"><span class="bi">print</span>(contador)   <span class="cm"># 3</span></span></div></pre>
+      </div>
+    </section>
+
+    <!-- 06 FUNCIONES -->
+    <section id="funciones" class="section">
+      <div class="reveal">
+        <p class="sec-id">// 06 · Control de Flujo</p>
+        <h2 class="sec-title">Funciones</h2>
+      </div>
+      <div class="def-box reveal">
+        <p>Una <strong>función</strong> es un bloque de código reutilizable con un nombre que realiza una tarea específica. Se define una vez con <em>def</em> y se puede llamar tantas veces como sea necesario. Recibe datos de entrada llamados <em>parámetros</em> y devuelve un resultado con <em>return</em>. Son la herramienta principal para organizar y reutilizar código de forma modular.</p>
+      </div>
+      <div class="prop-grid reveal">
+        <div class="prop-card">
+          <p class="prop-name">def</p>
+          <p class="prop-desc">Palabra clave para definir una función. Seguida del nombre, paréntesis con parámetros opcionales y dos puntos. El cuerpo va indentado.</p>
+        </div>
+        <div class="prop-card">
+          <p class="prop-name">Parámetros y argumentos</p>
+          <p class="prop-desc">Los <strong>parámetros</strong> son variables en la definición. Los <strong>argumentos</strong> son los valores reales pasados al llamar la función.</p>
+        </div>
+        <div class="prop-card">
+          <p class="prop-name">return</p>
+          <p class="prop-desc">Devuelve un valor al punto donde se llamó la función y termina su ejecución. Sin <code>return</code>, la función retorna <code>None</code> automáticamente.</p>
+        </div>
+        <div class="prop-card">
+          <p class="prop-name">Valores por defecto</p>
+          <p class="prop-desc">Los parámetros pueden tener valores predefinidos: <code>def f(x, y=10)</code>. Si no se pasa <code>y</code>, se usa 10 automáticamente.</p>
+        </div>
+        <div class="prop-card">
+          <p class="prop-name">Scope (alcance)</p>
+          <p class="prop-desc">Las variables creadas dentro de una función son <strong>locales</strong>: solo existen dentro de ella y no afectan el código exterior.</p>
+        </div>
+        <div class="prop-card">
+          <p class="prop-name">Lambda</p>
+          <p class="prop-desc">Funciones anónimas de una sola expresión: <code>doble = lambda x: x * 2</code>. Útiles para operaciones simples en línea o como argumentos.</p>
+        </div>
+      </div>
+      <div class="codeblock reveal">
+        <div class="codeblock-top">
+          <div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div>
+          <span class="codeblock-fname">funciones.py</span>
+        </div>
+        <pre>
+<div class="cl"><span class="ln">1</span><span class="lc"><span class="kw">def</span> <span class="fn">saludar</span>(nombre, saludo=<span class="st">"Hola"</span>):</span></div>
+<div class="cl"><span class="ln">2</span><span class="lc">    <span class="kw">return</span> <span class="st">f"{saludo}, {nombre}!"</span></span></div>
+<div class="cl"><span class="ln">3</span><span class="lc"></span></div>
+<div class="cl"><span class="ln">4</span><span class="lc"><span class="bi">print</span>(<span class="fn">saludar</span>(<span class="st">"Paula"</span>))          <span class="cm"># Hola, Paula!</span></span></div>
+<div class="cl"><span class="ln">5</span><span class="lc"><span class="bi">print</span>(<span class="fn">saludar</span>(<span class="st">"Mundo"</span>, <span class="st">"Hey"</span>))   <span class="cm"># Hey, Mundo!</span></span></div>
+<div class="cl"><span class="ln">6</span><span class="lc"></span></div>
+<div class="cl"><span class="ln">7</span><span class="lc"><span class="cm"># Lambda</span></span></div>
+<div class="cl"><span class="ln">8</span><span class="lc">doble = <span class="kw">lambda</span> x: x * <span class="nm">2</span></span></div>
+<div class="cl"><span class="ln">9</span><span class="lc"><span class="bi">print</span>(doble(<span class="nm">7</span>))                   <span class="cm"># 14</span></span></div></pre>
+      </div>
+    </section>
+
+    <!-- 07 LISTAS Y TUPLAS -->
+    <section id="listas" class="section">
+      <div class="reveal">
+        <p class="sec-id">// 07 · Estructuras de Datos</p>
+        <h2 class="sec-title">Listas y Tuplas</h2>
+      </div>
+      <div class="def-box reveal">
+        <p>Las <strong>listas</strong> y <strong>tuplas</strong> son colecciones ordenadas que almacenan múltiples elementos en una sola variable. La diferencia clave: las listas son <em>mutables</em> (se pueden modificar) y las tuplas son <em>inmutables</em> (no cambian tras su creación), siendo más eficientes y seguras para almacenar datos fijos como coordenadas o configuraciones.</p>
+      </div>
+      <div class="prop-grid reveal">
+        <div class="prop-card">
+          <p class="prop-name">Lista [ ]</p>
+          <p class="prop-desc">Se define con corchetes. Puede contener cualquier tipo de dato mezclado. Sus elementos se pueden agregar, eliminar o modificar libremente.</p>
+        </div>
+        <div class="prop-card">
+          <p class="prop-name">Tupla ( )</p>
+          <p class="prop-desc">Se define con paréntesis. Una vez creada no se puede modificar. Ideal para datos constantes como coordenadas o configuraciones fijas.</p>
+        </div>
+        <div class="prop-card">
+          <p class="prop-name">Indexación</p>
+          <p class="prop-desc">Acceso por posición desde 0. Los índices negativos van desde el final: <code>lista[-1]</code> es siempre el último elemento.</p>
+        </div>
+        <div class="prop-card">
+          <p class="prop-name">Slicing</p>
+          <p class="prop-desc">Extrae porciones: <code>lista[1:4]</code> devuelve del índice 1 al 3. Con paso: <code>[::2]</code> toma uno de cada dos elementos.</p>
+        </div>
+        <div class="prop-card">
+          <p class="prop-name">Métodos de lista</p>
+          <p class="prop-desc"><code>.append()</code> agrega al final · <code>.remove()</code> elimina por valor · <code>.sort()</code> ordena · <code>.pop()</code> quita el último.</p>
+        </div>
+        <div class="prop-card">
+          <p class="prop-name">len()</p>
+          <p class="prop-desc">Función integrada que devuelve el número de elementos de cualquier colección: <code>len([1,2,3])</code> → 3.</p>
+        </div>
+      </div>
+      <div class="codeblock reveal">
+        <div class="codeblock-top">
+          <div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div>
+          <span class="codeblock-fname">listas.py</span>
+        </div>
+        <pre>
+<div class="cl"><span class="ln">1</span><span class="lc">frutas = [<span class="st">"manzana"</span>, <span class="st">"pera"</span>, <span class="st">"uva"</span>]</span></div>
+<div class="cl"><span class="ln">2</span><span class="lc">frutas.append(<span class="st">"mango"</span>)</span></div>
+<div class="cl"><span class="ln">3</span><span class="lc"><span class="bi">print</span>(frutas[<span class="nm">0</span>])      <span class="cm"># manzana</span></span></div>
+<div class="cl"><span class="ln">4</span><span class="lc"><span class="bi">print</span>(frutas[-<span class="nm">1</span>])     <span class="cm"># mango</span></span></div>
+<div class="cl"><span class="ln">5</span><span class="lc"><span class="bi">print</span>(frutas[<span class="nm">1</span>:<span class="nm">3</span>])    <span class="cm"># ['pera', 'uva']</span></span></div>
+<div class="cl"><span class="ln">6</span><span class="lc"></span></div>
+<div class="cl"><span class="ln">7</span><span class="lc"><span class="cm"># Tupla inmutable</span></span></div>
+<div class="cl"><span class="ln">8</span><span class="lc">punto = (<span class="nm">10</span>, <span class="nm">20</span>)</span></div>
+<div class="cl"><span class="ln">9</span><span class="lc"><span class="bi">print</span>(punto[<span class="nm">1</span>])        <span class="cm"># 20</span></span></div></pre>
+      </div>
+    </section>
+
+    <!-- 08 DICCIONARIOS -->
+    <section id="diccionarios" class="section">
+      <div class="reveal">
+        <p class="sec-id">// 08 · Estructuras de Datos</p>
+        <h2 class="sec-title">Diccionarios</h2>
+      </div>
+      <div class="def-box reveal">
+        <p>Un <strong>diccionario</strong> es una colección de pares <em>clave: valor</em>. Cada clave es única y sirve para acceder directamente a su valor, como un diccionario real donde la palabra es la clave y su definición el valor. Son extremadamente eficientes para buscar, organizar y estructurar datos con nombres descriptivos en lugar de índices numéricos.</p>
+      </div>
+      <div class="prop-grid reveal">
+        <div class="prop-card">
+          <p class="prop-name">Sintaxis { }</p>
+          <p class="prop-desc">Se define con llaves. Cada par: <code>"clave": valor</code>, separados por comas. Las claves son generalmente cadenas o números.</p>
+        </div>
+        <div class="prop-card">
+          <p class="prop-name">Acceso a valores</p>
+          <p class="prop-desc"><code>dict["clave"]</code> accede directamente. <code>dict.get("clave")</code> es más seguro: devuelve <code>None</code> si la clave no existe en lugar de error.</p>
+        </div>
+        <div class="prop-card">
+          <p class="prop-name">Mutabilidad</p>
+          <p class="prop-desc">Los diccionarios son mutables. Se pueden agregar, modificar o eliminar pares en cualquier momento tras su creación.</p>
+        </div>
+        <div class="prop-card">
+          <p class="prop-name">Métodos clave</p>
+          <p class="prop-desc"><code>.keys()</code> lista claves · <code>.values()</code> lista valores · <code>.items()</code> retorna pares · <code>.pop("k")</code> elimina una clave.</p>
+        </div>
+      </div>
+      <div class="codeblock reveal">
+        <div class="codeblock-top">
+          <div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div>
+          <span class="codeblock-fname">diccionarios.py</span>
+        </div>
+        <pre>
+<div class="cl"><span class="ln">1</span><span class="lc">alumna = {</span></div>
+<div class="cl"><span class="ln">2</span><span class="lc">    <span class="st">"nombre"</span>  : <span class="st">"Paula"</span>,</span></div>
+<div class="cl"><span class="ln">3</span><span class="lc">    <span class="st">"semestre"</span>: <span class="nm">2</span>,</span></div>
+<div class="cl"><span class="ln">4</span><span class="lc">    <span class="st">"promedio"</span>: <span class="nm">9.8</span></span></div>
+<div class="cl"><span class="ln">5</span><span class="lc">}</span></div>
+<div class="cl"><span class="ln">6</span><span class="lc"><span class="bi">print</span>(alumna[<span class="st">"nombre"</span>])      <span class="cm"># Paula</span></span></div>
+<div class="cl"><span class="ln">7</span><span class="lc">alumna[<span class="st">"grupo"</span>] = <span class="st">"IA"</span>       <span class="cm"># Agregar nueva clave</span></span></div>
+<div class="cl"><span class="ln">8</span><span class="lc"><span class="kw">for</span> k, v <span class="kw">in</span> alumna.items():</span></div>
+<div class="cl"><span class="ln">9</span><span class="lc">    <span class="bi">print</span>(k, <span class="st">":"</span>, v)</span></div></pre>
+      </div>
+    </section>
+
+    <!-- 09 CLASES Y POO -->
+    <section id="clases" class="section">
+      <div class="reveal">
+        <p class="sec-id">// 09 · Avanzado</p>
+        <h2 class="sec-title">Clases y POO</h2>
+      </div>
+      <div class="def-box reveal">
+        <p>La <strong>Programación Orientada a Objetos (POO)</strong> organiza el código en torno a <em>objetos</em> que combinan datos (atributos) y comportamientos (métodos). Una <strong>clase</strong> es el molde que define la estructura; un <strong>objeto</strong> es una instancia concreta creada a partir de ella. Permite modelar el mundo real de forma natural, organizada y reutilizable.</p>
+      </div>
+      <div class="prop-grid reveal">
+        <div class="prop-card">
+          <p class="prop-name">class</p>
+          <p class="prop-desc">Palabra clave para definir una clase. Por convención se usa CamelCase: <code>class MiClase:</code>. Es el plano de los objetos.</p>
+        </div>
+        <div class="prop-card">
+          <p class="prop-name">__init__</p>
+          <p class="prop-desc">Constructor: se ejecuta automáticamente al crear un objeto. Inicializa los atributos de la nueva instancia con los valores recibidos.</p>
+        </div>
+        <div class="prop-card">
+          <p class="prop-name">self</p>
+          <p class="prop-desc">Referencia al objeto actual. Primer parámetro de todos los métodos. Permite acceder y modificar los atributos propios del objeto.</p>
+        </div>
+        <div class="prop-card">
+          <p class="prop-name">Herencia</p>
+          <p class="prop-desc">Una clase puede heredar atributos y métodos de otra clase padre. Promueve la reutilización y extensión del comportamiento sin repetir código.</p>
+        </div>
+        <div class="prop-card">
+          <p class="prop-name">Encapsulamiento</p>
+          <p class="prop-desc">Agrupa datos y métodos en una unidad. Atributos con <code>_</code> son protegidos y con <code>__</code> son privados, restringiendo el acceso externo.</p>
+        </div>
+        <div class="prop-card">
+          <p class="prop-name">Polimorfismo</p>
+          <p class="prop-desc">Distintos objetos pueden responder al mismo método de formas diferentes. Permite código más flexible, genérico y escalable.</p>
+        </div>
+      </div>
+      <div class="codeblock reveal">
+        <div class="codeblock-top">
+          <div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div>
+          <span class="codeblock-fname">clases.py</span>
+        </div>
+        <pre>
+<div class="cl"><span class="ln">1</span><span class="lc"><span class="kw">class</span> <span class="fn">Alumna</span>:</span></div>
+<div class="cl"><span class="ln">2</span><span class="lc">    <span class="kw">def</span> <span class="fn">__init__</span>(self, nombre, promedio):</span></div>
+<div class="cl"><span class="ln">3</span><span class="lc">        self.nombre   = nombre</span></div>
+<div class="cl"><span class="ln">4</span><span class="lc">        self.promedio = promedio</span></div>
+<div class="cl"><span class="ln">5</span><span class="lc"></span></div>
+<div class="cl"><span class="ln">6</span><span class="lc">    <span class="kw">def</span> <span class="fn">presentar</span>(self):</span></div>
+<div class="cl"><span class="ln">7</span><span class="lc">        <span class="kw">return</span> <span class="st">f"Soy {self.nombre}, promedio {self.promedio}"</span></span></div>
+<div class="cl"><span class="ln">8</span><span class="lc"></span></div>
+<div class="cl"><span class="ln">9</span><span class="lc">paula = <span class="fn">Alumna</span>(<span class="st">"Paula"</span>, <span class="nm">9.8</span>)</span></div>
+<div class="cl"><span class="ln">10</span><span class="lc"><span class="bi">print</span>(paula.<span class="fn">presentar</span>())  <span class="cm"># Soy Paula, promedio 9.8</span></span></div></pre>
+      </div>
+      <div class="pull-quote reveal">"Las clases son los planos; los objetos son los edificios construidos a partir de esos planos."</div>
+    </section>
+
+    <!-- 10 MÓDULOS -->
+    <section id="modulos" class="section">
+      <div class="reveal">
+        <p class="sec-id">// 10 · Avanzado</p>
+        <h2 class="sec-title">Módulos y Librerías</h2>
+      </div>
+      <div class="def-box reveal">
+        <p>Un <strong>módulo</strong> es un archivo Python (<code>.py</code>) con funciones, clases o variables reutilizables. Una <strong>librería</strong> es una colección de módulos agrupados. Python incluye una extensa biblioteca estándar y permite instalar miles de paquetes externos con el gestor <em>pip</em>, ampliando enormemente las capacidades del lenguaje sin tener que programar todo desde cero.</p>
+      </div>
+      <div class="prop-grid reveal">
+        <div class="prop-card">
+          <p class="prop-name">import</p>
+          <p class="prop-desc">Importa un módulo completo. Se accede a sus elementos con notación de punto: <code>math.sqrt(16)</code>.</p>
+        </div>
+        <div class="prop-card">
+          <p class="prop-name">from … import</p>
+          <p class="prop-desc">Importa elementos específicos directamente: <code>from math import pi</code>. No se necesita el prefijo del módulo al usarlo.</p>
+        </div>
+        <div class="prop-card">
+          <p class="prop-name">as (alias)</p>
+          <p class="prop-desc">Asigna un nombre corto al módulo: <code>import numpy as np</code>. Convención estándar para librerías populares como numpy y pandas.</p>
+        </div>
+        <div class="prop-card">
+          <p class="prop-name">Biblioteca estándar</p>
+          <p class="prop-desc">Incluida con Python sin instalar nada: <code>math</code> · <code>random</code> · <code>datetime</code> · <code>os</code> · <code>json</code> · <code>sys</code> · <code>re</code>.</p>
+        </div>
+        <div class="prop-card">
+          <p class="prop-name">pip</p>
+          <p class="prop-desc">Gestor de paquetes de Python. Instala librerías externas desde la terminal: <code>pip install nombre</code>. Lista instaladas: <code>pip list</code>.</p>
+        </div>
+        <div class="prop-card">
+          <p class="prop-name">Librerías populares</p>
+          <p class="prop-desc"><code>numpy</code> · <code>pandas</code> · <code>matplotlib</code> · <code>requests</code> · <code>flask</code> · <code>scikit-learn</code> · <code>pillow</code> · <code>pygame</code>.</p>
+        </div>
+      </div>
+      <div class="codeblock reveal">
+        <div class="codeblock-top">
+          <div class="cd cd-r"></div><div class="cd cd-y"></div><div class="cd cd-g"></div>
+          <span class="codeblock-fname">modulos.py</span>
+        </div>
+        <pre>
+<div class="cl"><span class="ln">1</span><span class="lc"><span class="kw">import</span> math</span></div>
+<div class="cl"><span class="ln">2</span><span class="lc"><span class="kw">from</span> random <span class="kw">import</span> randint</span></div>
+<div class="cl"><span class="ln">3</span><span class="lc"><span class="kw">import</span> datetime <span class="kw">as</span> dt</span></div>
+<div class="cl"><span class="ln">4</span><span class="lc"></span></div>
+<div class="cl"><span class="ln">5</span><span class="lc"><span class="bi">print</span>(math.<span class="fn">sqrt</span>(<span class="nm">144</span>))        <span class="cm"># 12.0</span></span></div>
+<div class="cl"><span class="ln">6</span><span class="lc"><span class="bi">print</span>(math.pi)                <span class="cm"># 3.14159...</span></span></div>
+<div class="cl"><span class="ln">7</span><span class="lc"><span class="bi">print</span>(<span class="fn">randint</span>(<span class="nm">1</span>, <span class="nm">10</span>))        <span class="cm"># número aleatorio 1-10</span></span></div>
+<div class="cl"><span class="ln">8</span><span class="lc"><span class="bi">print</span>(dt.date.today())        <span class="cm"># fecha actual</span></span></div></pre>
+      </div>
+      <div class="infobox reveal">
+        <p><strong>Tip:</strong> Instala librerías externas con <code>pip install nombre</code> en la terminal. Para proyectos profesionales usa <strong>entornos virtuales</strong> (<code>python -m venv env</code>) para mantener las dependencias aisladas por proyecto y evitar conflictos entre versiones.</p>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<footer class="site-footer">
+  <p><span>✦ CENTRO DE BACHILLERATO TECNOLÓGICO INDUSTRIAL Y DE SERVICIOS N° 144 ✦</span></p>
+  <p>Segundo Semestre de IA &nbsp;·&nbsp; Paula Estrada Alegria &nbsp;·&nbsp; 2026</p>
+</footer>
+
+<script>
+/* WAVE TERRAIN CANVAS — ola de partículas rojas animadas, inspirada en la imagen */
+(function () {
+  const canvas = document.getElementById('polyCanvas');
+  const ctx    = canvas.getContext('2d');
+  const hero   = canvas.parentElement;
+  let W, H, t = 0;
+
+  /* Grid dimensions */
+  const COLS = 80;
+  const ROWS = 28;
+
+  function resize() {
+    W = canvas.width  = hero.offsetWidth;
+    H = canvas.height = hero.offsetHeight;
+  }
+
+  /* Returns the y displacement of a wave point */
+  function waveY(col, row, time) {
+    const nx = col / COLS;
+    const nr = row / ROWS;
+    /* Multiple sine waves layered — creates the rolling ocean look */
+    const wave1 = Math.sin(nx * 6.0 - time * 1.1) * 0.55;
+    const wave2 = Math.sin(nx * 3.5 + time * 0.7 + nr * 2.0) * 0.30;
+    const wave3 = Math.sin(nx * 10  - time * 1.8 + nr * 1.2) * 0.15;
+    /* The terrain lives in the bottom ~45% of the canvas */
+    const baseY = H * (0.54 + nr * 0.46);
+    const amplitude = H * 0.14 * (1 - nr * 0.5); /* top rows move more */
+    return baseY + (wave1 + wave2 + wave3) * amplitude;
+  }
+
+  /* Brightness based on row + wave crest */
+  function brightness(col, row, time) {
+    const nx = col / COLS;
+    const crest = Math.sin(nx * 6.0 - time * 1.1);
+    const rowFactor = 1 - row / ROWS;
+    return Math.max(0, Math.min(1, (crest * 0.5 + 0.5) * rowFactor));
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+    t += 0.012;
+
+    const cellW = W / COLS;
+
+    /* Draw lines along columns (front-to-back depth lines) */
+    for (let c = 0; c <= COLS; c++) {
+      ctx.beginPath();
+      let started = false;
+      for (let r = 0; r <= ROWS; r++) {
+        const x = c * cellW;
+        const y = waveY(c, r, t);
+        const br = brightness(c, r, t);
+        if (!started) { ctx.moveTo(x, y); started = true; }
+        else ctx.lineTo(x, y);
+      }
+      /* Color: gradient from dim red at bottom to bright red/white at crest */
+      const midBr = brightness(c, Math.floor(ROWS * 0.2), t);
+      const alpha = 0.08 + midBr * 0.55;
+      ctx.strokeStyle = midBr > 0.6
+        ? `rgba(255,${Math.floor(midBr * 120)},${Math.floor(midBr * 80)},${alpha + 0.15})`
+        : `rgba(229,9,20,${alpha})`;
+      ctx.lineWidth = 0.6 + midBr * 0.8;
+      ctx.shadowColor = `rgba(229,9,20,${midBr * 0.6})`;
+      ctx.shadowBlur  = midBr * 8;
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+    }
+
+    /* Draw horizontal lines (wave rows) */
+    for (let r = 0; r <= ROWS; r++) {
+      ctx.beginPath();
+      for (let c = 0; c <= COLS; c++) {
+        const x = c * cellW;
+        const y = waveY(c, r, t);
+        c === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+      }
+      const rowBr = 1 - r / ROWS;
+      const alpha = 0.04 + rowBr * 0.30;
+      ctx.strokeStyle = `rgba(229,9,20,${alpha})`;
+      ctx.lineWidth = 0.4 + rowBr * 0.5;
+      ctx.stroke();
+    }
+
+    /* Glowing dots at grid intersections near crests */
+    for (let c = 0; c <= COLS; c += 2) {
+      for (let r = 0; r <= ROWS; r += 2) {
+        const x = c * cellW;
+        const y = waveY(c, r, t);
+        const br = brightness(c, r, t);
+        if (br > 0.35) {
+          const radius = 0.8 + br * 2.2;
+          ctx.beginPath();
+          ctx.arc(x, y, radius, 0, Math.PI * 2);
+          /* Near-crest dots go white-hot */
+          const g = Math.floor(br * 80);
+          const b2 = Math.floor(br * 50);
+          ctx.fillStyle = br > 0.75
+            ? `rgba(255,${g + 80},${b2 + 60},${br * 0.95})`
+            : `rgba(229,9,20,${br * 0.85})`;
+          ctx.shadowColor = `rgba(229,9,20,${br * 0.8})`;
+          ctx.shadowBlur  = br * 12;
+          ctx.fill();
+          ctx.shadowBlur = 0;
+        }
+      }
+    }
+
+    /* Ambient glow at the crest horizon */
+    const glowY = H * 0.52;
+    const grad = ctx.createRadialGradient(W/2, glowY, 0, W/2, glowY, W * 0.45);
+    grad.addColorStop(0,   `rgba(229,9,20,${0.08 + Math.sin(t * 0.8) * 0.03})`);
+    grad.addColorStop(0.5, `rgba(180,0,10,0.04)`);
+    grad.addColorStop(1,   'rgba(0,0,0,0)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, glowY - H * 0.25, W, H * 0.5);
+
+    requestAnimationFrame(draw);
+  }
+
+  resize(); draw();
+  window.addEventListener('resize', resize);
+})();
+
+/* SCROLL REVEAL */
+(function () {
+  const io = new IntersectionObserver(entries => {
+    entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('visible'); io.unobserve(e.target); } });
+  }, { threshold: 0.06, rootMargin: '0px 0px -20px 0px' });
+  document.querySelectorAll('.reveal').forEach(el => io.observe(el));
+})();
+
+/* SIDEBAR ACTIVE */
+(function () {
+  const links = document.querySelectorAll('.nav-link');
+  const io = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        links.forEach(l => l.classList.remove('active'));
+        const a = document.querySelector(`.nav-link[href="#${e.target.id}"]`);
+        if (a) a.classList.add('active');
+      }
+    });
+  }, { threshold: 0.3 });
+  document.querySelectorAll('section[id]').forEach(s => io.observe(s));
+})();
+
+/* READING BAR */
+(function () {
+  const bar = document.getElementById('readingBar');
+  window.addEventListener('scroll', () => {
+    bar.style.width = (window.scrollY / (document.documentElement.scrollHeight - window.innerHeight) * 100) + '%';
+  }, { passive: true });
+})();
+
+/* SCROLL TOP */
+(function () {
+  const btn = document.getElementById('btnTop');
+  window.addEventListener('scroll', () => btn.classList.toggle('show', window.scrollY > 400), { passive: true });
+  btn.addEventListener('click', e => { e.preventDefault(); window.scrollTo({ top: 0, behavior: 'smooth' }); });
+})();
+</script>
+</body>
+</html>
